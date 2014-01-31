@@ -3,13 +3,38 @@ use strict;
 use WWW::Mechanize;
 use Date::Calc qw(:all);
 
+my $name = "";
 my $username = "";
 my $password =  "";
 my $domain = "";
 my $team = "";
 my $dry_run = 1;
 my $debug = 1;
-my $url;
+my $commits_by_date = "~/bin/commits_by_date.sh";
+my $author = "";
+
+my @sessions = (
+	'Summary',
+	'Meetings/Trips',
+	'Issues',
+	'Development'
+);
+
+my @session_body = (
+	"summary.twiki",
+	"meetings.twiki",
+	"issues.twiki",
+	"development.twiki",
+);
+
+my %projects = {
+	'Kernel media subsystem' => '/devel/v4l/patchwork',
+	'Kernel EDAC subsystem' => '/devel/edac/edac',
+	'v4l-utils' => '/devel/v4l/v4l-utils',
+	'media build tree' => '/devel/v4l/patchwork',
+	'xawtv version 3' => '/devel/v4l/xawtv3',
+	'Rasdaemon' => '/devel/edac/rasdaemon',
+};
 
 my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime();
 
@@ -18,13 +43,54 @@ $month += 1;
 
 print "$year-$month-$day\n";
 
-my $week;
+my ($week, $y) = Week_of_Year($year, $month, $day);
 
-($week, $year) = Week_of_Year($year, $month, $day);
+my @saturday = Add_Delta_Days(Monday_of_Week($week - 1, $year), 6);
+my @sunday = Add_Delta_Days(Monday_of_Week($week, $year), 5);
 
-$url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username, $week, $year;
+printf "From %04d-%02d-%02d to %04d-%02d-%02d\n", @saturday, @sunday if ($debug);
+
+my $date1 = sprintf "%04d-%02d-%02d", @saturday;
+my $date2 = sprintf "%04d-%02d-%02d", @sunday;
+
+my $month1 = Month_to_Text($saturday[1]);
+
+my $period;
+
+if ($saturday[1] != $sunday[1]) {
+	my $month2 = Month_to_Text($sunday[1]);
+	$period = sprintf "$name - Week %02d: %s %02d - %s %02d\n", $week, $month1, $saturday[2], $month2, $sunday[2];
+} else {
+	$period = sprintf "$name - Week %02d: %s %02d-%02d\n", $week, $month1, $saturday[2], $sunday[2];
+}
+
+my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username, $week, $year;
 
 printf "URL = $url\n" if ($debug);
+
+my $data = sprintf "%TOC%\n\n---+ $period";
+
+for (my $i = 0; $i < scalar @sessions; $i++) {
+	my $s = $sessions[$i];
+
+	printf "session $i: %s\n", $session_body[$i] if ($debug);
+
+	$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
+	$data .= qx(cat $session_body[$i]);
+	if (!$i) {
+#FIXME: add a foreach
+		$data .= qx($commits_by_date --comitter --since $date1 --to $date2 --author chehab --silent);
+	}
+	$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
+}
+
+$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
+
+print $data if ($debug);
+
+
+exit if ($dry_run);
+
 
 my $mech = WWW::Mechanize->new();
 $mech->credentials($username, $password);
@@ -41,7 +107,7 @@ print $form->dump if ($debug > 1);
 printf "Form length = %d\n", length($form->dump);
 
 if (length($form->dump) > 1258) {
-	printf "Week report already submitted.\n");
+	printf "Week report already submitted.\n";
 	exit;
 }
 
