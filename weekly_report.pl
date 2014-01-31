@@ -9,7 +9,7 @@ my $password =  "";
 my $domain = "";
 my $team = "";
 my $dry_run = 1;
-my $debug = 1;
+my $debug = 0;
 my $commits_by_date = "~/bin/commits_by_date.sh";
 my $author = "";
 
@@ -27,21 +27,21 @@ my @session_body = (
 	"development.twiki",
 );
 
-my %projects = {
+my %projects = (
 	'Kernel media subsystem' => '/devel/v4l/patchwork',
+	'Kernel media not submitted patches' => '/devel/v4l/temp',
 	'Kernel EDAC subsystem' => '/devel/edac/edac',
 	'v4l-utils' => '/devel/v4l/v4l-utils',
 	'media build tree' => '/devel/v4l/patchwork',
 	'xawtv version 3' => '/devel/v4l/xawtv3',
 	'Rasdaemon' => '/devel/edac/rasdaemon',
-};
+	'perl Twiki status' => '/devel/perltwiki',
+);
 
 my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime();
 
 $year += 1900;
 $month += 1;
-
-print "$year-$month-$day\n";
 
 my ($week, $y) = Week_of_Year($year, $month, $day);
 
@@ -78,15 +78,31 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 	$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
 	$data .= qx(cat $session_body[$i]);
 	if (!$i) {
-#FIXME: add a foreach
-		$data .= qx($commits_by_date --comitter --since $date1 --to $date2 --author chehab --silent);
+		foreach my $proj (keys %projects) {
+			my $dir = $projects{$proj};
+
+			printf "project $proj, directory $dir\n" if ($debug);
+
+			my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
+			my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
+
+			$per_author =~ s/\s+$//;
+			$per_committer =~ s/\s+$//;
+
+
+			$data .= sprintf "---+++ [$proj] Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+			$data .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
+			$data .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$per_committer;
+			$data .= " | 0 | Mauro report's mechanism |\n";
+		}
 	}
 	$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 }
 
 $data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
 
-print $data if ($debug);
+#print $data if ($debug);
+print $data;
 
 
 exit if ($dry_run);
