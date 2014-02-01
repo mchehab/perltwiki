@@ -83,6 +83,29 @@ sub get_patch_table($$)
 	return $table;
 }
 
+sub replace_table($$$$$)
+{
+	my $table_tag = shift;
+	my $data = shift;
+	my $session = shift;
+	my $date1 = shift;
+	my $date2 = shift;
+
+	# If the session has tables remove
+	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1\2\3$table_tag\4/s;
+
+	# If the session doesn't have a session tag, add it
+	if (!($data =~ m/$table_tag/)) {
+		$data =~ s/(\%ENDSECTION\{\")($session)(\"\}.)/$table_tag\1\2\3/s;
+	}
+
+	my $summary_table = get_patch_table($date1, $date2);
+
+	$data =~ s/($table_tag)/$summary_table/;
+
+	return $data;
+}
+
 my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime();
 
 $year += 1900;
@@ -138,11 +161,10 @@ $empty = 1 if (!($data =~ m/STARTSECTION/));
 my $sum_table_tag = '===SUMMARYTABLE===';
 
 if ($empty) {
-	my $data = sprintf "%TOC%\n\n---+ $period";
+	$data = sprintf "%TOC%\n\n---+ $period";
 
 	for (my $i = 0; $i < scalar @sessions; $i++) {
 		my $s = $sessions[$i];
-
 		printf "session $i: %s\n", $session_body[$i] if ($debug);
 
 		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
@@ -150,19 +172,10 @@ if ($empty) {
 		$data .= "$sum_table_tag" if (!$i);
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 	}
-
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
-} else {
-	$data =~ s/(STARTSECTION\{\"Summary\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1$sum_table_tag\2/s;
-
-	if (!($data =~ m/$sum_table_tag/)) {
-		$data =~ s/(\%ENDSECTION\{\"Summary\"\}.)/$sum_table_tag\1/s;
-	}
 }
 
-my $summary_table = get_patch_table($date1, $date2);
-
-$data =~ s/($sum_table_tag)/$summary_table/;
+$data = replace_table('===SUMMARYTABLE===', $data, 'Summary', $date1, $date2);
 
 print $data if ($debug);
 exit if ($dry_run);
