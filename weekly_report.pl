@@ -120,6 +120,10 @@ if ($empty) {
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
 } else {
 	$data =~ s/(STARTSECTION\{\"Summary\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1===SUMMARYTABLE===\2/s;
+
+	if (!($data =~ m/===SUMMARYTABLE===/)) {
+		$data =~ s/(\%ENDSECTION\{\"Summary\"\}.)/===SUMMARYTABLE===\1/s;
+	}
 }
 
 my $summary_table = "";
