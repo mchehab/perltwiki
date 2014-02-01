@@ -235,5 +235,6 @@ exit if ($dry_run);
 print "Updating $url\n" if (!$debug);
 
 $form->param("text", $data);
+$form->param("forcenewrevision", 1);
 $mech->submit();
 
