@@ -114,7 +114,7 @@ sub get_patch_table($$$)
 					my $cn = $5;
 					my $s = $6;
 
-					next if (($ad < $since || $ad > $to) && ($cd < $since || $cd > $to));
+					next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
 
 					$ad = sprintf "%04d-%02d-%02d", Add_Delta_Days(1970, 01, 01, ($ad / (60 * 60 * 24)));
 					$cd = sprintf "%04d-%02d-%02d", Add_Delta_Days(1970, 01, 01, ($cd / (60 * 60 * 24)));
