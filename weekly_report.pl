@@ -45,7 +45,7 @@ my %projects = (
 #	'Kernel media subsystem under work' => '/devel/v4l/temp',
 	'Kernel EDAC subsystem' => '/devel/edac/edac',
 	'v4l-utils' => '/devel/v4l/v4l-utils',
-	'media build tree' => '/devel/v4l/patchwork',
+	'media build tree' => '/devel/v4l/media_build',
 	'xawtv version 3' => '/devel/v4l/xawtv3',
 	'Rasdaemon' => '/devel/edac/rasdaemon',
 	'perl Twiki status' => '/devel/perltwiki',
@@ -64,8 +64,8 @@ sub get_patch_table($$$)
 
 	foreach my $proj (keys %projects) {
 		my $dir = $projects{$proj};
-		my $per_author;
-		my $per_committer;
+		my $per_author = 0;
+		my $per_committer = 0;
 
 		my $since = (Date_to_Days(@saturday) - Date_to_Days(1970, 01, 01)) * 60 * 60 * 24;
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
