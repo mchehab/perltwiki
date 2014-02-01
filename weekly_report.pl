@@ -114,13 +114,16 @@ sub get_patch_table($$$)
 
 					next if (($ad < $since || $ad > $to) && ($cd < $since || $cd > $to));
 
-					$patch .= sprintf "| $cs | %s | %s | $s |\n", encode_entities($an), encode_entities($cn);
+					$ad = sprintf "%04d-%02d-%02d", Add_Delta_Days(1970, 01, 01, ($ad / (60 * 60 * 24)));
+					$cd = sprintf "%04d-%02d-%02d", Add_Delta_Days(1970, 01, 01, ($cd / (60 * 60 * 24)));
+
+					$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad, encode_entities($an), $cd, encode_entities($cn), $s;
 				}
 			}
 			close IN;
 			if ($patch ne "") {
 				$table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
-				$table .= sprintf '| *Changeset* | *Author* | *Comitter* | *Subject* |';
+				$table .= sprintf '| *Changeset* | *Date* | *Author* | *Commit Date* | *Comitter* | *Subject* |';
 				$table .= "\n$patch\n";
 			}
 		}
