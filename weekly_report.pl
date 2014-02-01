@@ -97,7 +97,7 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 			$data .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 			$data .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
 			$data .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
-			$data .= " | 0 | Mauro report's mechanism |\n\n";
+			$data .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
 		}
 	}
 	$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
@@ -124,6 +124,8 @@ if (!$res->is_success) {
 my $form = $mech->form_number(0);
 print $form->dump if ($debug > 1);
 
+exit;
+
 printf "Form length = %d\n", length($form->dump);
 
 if (length($form->dump) > 1258) {
@@ -133,7 +135,6 @@ if (length($form->dump) > 1258) {
 
 
 
-exit;
 
 $mech->follow_link( n => 3 );
 $mech->follow_link( text_regex => qr/download this/i );
