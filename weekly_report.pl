@@ -3,6 +3,7 @@ use strict;
 use WWW::Mechanize;
 use Date::Calc qw(:all);
 use Getopt::Long;
+use Cwd;
 
 my $name = "";
 my $username = "";
@@ -11,7 +12,7 @@ my $domain = "";
 my $team = "";
 my $dry_run = 0;
 my $debug = 0;
-my $commits_by_date = "~/bin/commits_by_date.sh";
+my $commits_by_date =  cwd() ."/commits_by_date.sh";
 my $author = "";
 my $help;
 my $force_week;
