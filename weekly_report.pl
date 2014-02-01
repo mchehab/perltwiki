@@ -19,11 +19,13 @@ my $force_week;
 
 GetOptions(
 	"--week=s" => \$force_week,
+	"--dry-run" => \$dry_run,
+	"--debug" => \$debug,
 	"--help" => \$help,
 );
 
 if ($help) {
-	printf "%s [--week=week]\n", $0;
+	printf "%s [--week=week] [--debug] [--dry-run]\n", $0;
 	exit 1;
 }
 
@@ -191,6 +193,7 @@ printf "period = $period\n" if ($debug);
 my $mech = WWW::Mechanize->new();
 $mech->credentials($username, $password);
 
+print "Reading $url\n" if (!$debug);
 my $res = $mech->get($url);
 if (!$res->is_success) {
 	print STDERR $res->status_line, "\n";
@@ -229,5 +232,8 @@ $data = replace_table($patch_table_tag, $data, 'Development', \@saturday, \@sund
 print $data if ($debug);
 exit if ($dry_run);
 
+print "Updating $url\n" if (!$debug);
+
 $form->param("text", $data);
 $mech->submit();
+
