@@ -42,7 +42,7 @@ my @session_body = (
 
 my %projects = (
 	'Kernel media subsystem' => '/devel/v4l/patchwork',
-	'Kernel media subsystem under work' => '/devel/v4l/temp',
+#	'Kernel media subsystem under work' => '/devel/v4l/temp',
 	'Kernel EDAC subsystem' => '/devel/edac/edac',
 	'v4l-utils' => '/devel/v4l/v4l-utils',
 	'media build tree' => '/devel/v4l/patchwork',
@@ -225,3 +225,5 @@ $data = replace_table($patch_table_tag, $data, 'Development', \@saturday, \@sund
 print $data if ($debug);
 exit if ($dry_run);
 
+$form->param("text", $data);
+$mech->submit();
