@@ -52,18 +52,29 @@ my %projects = (
 	'perl Twiki status' => '/devel/perltwiki',
 );
 
-sub get_patch_table($$)
+sub get_patch_table($$$)
 {
 	my $date1 = shift;
 	my $date2 = shift;
+	my $summary = shift;
 
 	my $table = "";
 
+	my $stats_line = "$commits_by_date --since $date1 --to $date2 --name chehab";
+	$stats_line .= "--silent" if ($summary);
+
 	foreach my $proj (keys %projects) {
 		my $dir = $projects{$proj};
+		my $per_author;
+		my $per_committer;
 
-		my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
-		my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
+		if ($summary) {
+			$per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --name '$name' --silent);
+			$per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --name '$name' --silent);
+		} else {
+#			$per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --name '$name');
+#			$per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --name '$name');
+		}
 
 		$per_author =~ s/\s+$//;
 		$per_committer =~ s/\s+$//;
@@ -83,13 +94,14 @@ sub get_patch_table($$)
 	return $table;
 }
 
-sub replace_table($$$$$)
+sub replace_table($$$$$$)
 {
 	my $table_tag = shift;
 	my $data = shift;
 	my $session = shift;
 	my $date1 = shift;
 	my $date2 = shift;
+	my $summary = shift;
 
 	# If the session has tables remove
 	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1\2\3$table_tag\4/s;
@@ -99,7 +111,7 @@ sub replace_table($$$$$)
 		$data =~ s/(\%ENDSECTION\{\")($session)(\"\}.)/$table_tag\1\2\3/s;
 	}
 
-	my $summary_table = get_patch_table($date1, $date2);
+	my $summary_table = get_patch_table($date1, $date2, $summary);
 
 	$data =~ s/($table_tag)/$summary_table/;
 
@@ -159,23 +171,26 @@ my $empty = 0;
 $empty = 1 if (!($data =~ m/STARTSECTION/));
 
 my $sum_table_tag = '===SUMMARYTABLE===';
+my $patch_table_tag = '===PATCHTABLE===';
 
 if ($empty) {
 	$data = sprintf "%TOC%\n\n---+ $period";
 
 	for (my $i = 0; $i < scalar @sessions; $i++) {
 		my $s = $sessions[$i];
-		printf "session $i: %s\n", $session_body[$i] if ($debug);
+		printf "session $s ($i): %s\n", $session_body[$i] if ($debug);
 
 		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
 		$data .= qx(cat $session_body[$i]);
-		$data .= "$sum_table_tag" if (!$i);
+		$data .= $sum_table_tag if ($s eq 'Summary');
+		$data .= $patch_table_tag if ($s eq 'Development');
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 	}
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
 }
 
-$data = replace_table('===SUMMARYTABLE===', $data, 'Summary', $date1, $date2);
+$data = replace_table($sum_table_tag, $data, 'Summary', $date1, $date2, 1);
+$data = replace_table($patch_table_tag, $data, 'Development', $date1, $date2, 0);
 
 print $data if ($debug);
 exit if ($dry_run);
