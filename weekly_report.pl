@@ -4,6 +4,7 @@ use WWW::Mechanize;
 use Date::Calc qw(:all);
 use Getopt::Long;
 use Cwd;
+use HTML::Entities;
 
 my $name = "";
 my $username = "";
@@ -113,7 +114,7 @@ sub get_patch_table($$$)
 
 					next if (($ad < $since || $ad > $to) && ($cd < $since || $cd > $to));
 
-					$patch .= "| $cs | $an | $cn | $s |\n";
+					$patch .= sprintf "| $cs | %s | %s | $s |\n", encode_entities($an), encode_entities($cn);
 				}
 			}
 			close IN;
