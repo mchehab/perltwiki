@@ -68,48 +68,6 @@ my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username
 
 printf "URL = $url\n" if ($debug);
 
-my $data = sprintf "%TOC%\n\n---+ $period";
-
-for (my $i = 0; $i < scalar @sessions; $i++) {
-	my $s = $sessions[$i];
-
-	printf "session $i: %s\n", $session_body[$i] if ($debug);
-
-	$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
-	$data .= qx(cat $session_body[$i]);
-	if (!$i) {
-		foreach my $proj (keys %projects) {
-			my $dir = $projects{$proj};
-
-			my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
-			my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
-
-			$per_author =~ s/\s+$//;
-			$per_committer =~ s/\s+$//;
-			my $reviewed = $per_committer;
-
-			$reviewed -= $per_author if ($reviewed >= $per_author);
-
-			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
-
-			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
-
-			$data .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
-			$data .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
-			$data .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
-			$data .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
-		}
-	}
-	$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
-}
-
-$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
-
-#print $data if ($debug);
-print $data if ($dry_run);
-
-exit if ($dry_run);
-
 my $mech = WWW::Mechanize->new();
 $mech->credentials($username, $password);
 
@@ -126,5 +84,51 @@ my $empty = 0;
 
 $empty = 1 if (!($data =~ m/STARTSECTION/));
 
-print $data if ($debug && !$empty);
+if ($empty) {
+	my $data = sprintf "%TOC%\n\n---+ $period";
+
+	for (my $i = 0; $i < scalar @sessions; $i++) {
+		my $s = $sessions[$i];
+
+		printf "session $i: %s\n", $session_body[$i] if ($debug);
+
+		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
+		$data .= qx(cat $session_body[$i]);
+		$data .= "===SUMMARYTABLE===" if (!$i);
+		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
+	}
+
+	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
+} else {
+	$data =~ s/(STARTSECTION\{\"Summary\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1===SUMMARYTABLE===\2/s;
+}
+
+my $summary_table = "";
+
+foreach my $proj (keys %projects) {
+	my $dir = $projects{$proj};
+
+	my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
+	my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
+
+	$per_author =~ s/\s+$//;
+	$per_committer =~ s/\s+$//;
+	my $reviewed = $per_committer;
+
+	$reviewed -= $per_author if ($reviewed >= $per_author);
+
+	next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
+
+	printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
+
+	$summary_table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+	$summary_table .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
+	$summary_table .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
+	$summary_table .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
+}
+
+$data =~ s/===SUMMARYTABLE===/$summary_table/;
+
+print $data if ($debug);
+exit if ($dry_run);
 
