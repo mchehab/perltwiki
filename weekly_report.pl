@@ -60,7 +60,7 @@ my ($week, $y) = Week_of_Year($year, $month, $day);
 
 $week = $force_week if ($force_week);
 
-my @saturday = Add_Delta_Days(Monday_of_Week($week - 1, $year), 6);
+my @saturday = Add_Delta_Days(Monday_of_Week($week, $year), -1);
 my @sunday = Add_Delta_Days(Monday_of_Week($week, $year), 5);
 
 printf "From %04d-%02d-%02d to %04d-%02d-%02d\n", @saturday, @sunday if ($debug);
@@ -72,7 +72,10 @@ my $month1 = Month_to_Text($saturday[1]);
 
 my $period;
 
-if ($saturday[1] != $sunday[1]) {
+if ($saturday[0] != $sunday[0]) {
+	my $month2 = Month_to_Text($sunday[1]);
+	$period = sprintf "$name - Week %02d: %s %02d %04d - %s %02d %04d\n", $week, $month1, $saturday[2], $saturday[0], $month2, $sunday[2], $sunday[0];
+} elsif ($saturday[1] != $sunday[1]) {
 	my $month2 = Month_to_Text($sunday[1]);
 	$period = sprintf "$name - Week %02d: %s %02d - %s %02d\n", $week, $month1, $saturday[2], $month2, $sunday[2];
 } else {
@@ -82,6 +85,7 @@ if ($saturday[1] != $sunday[1]) {
 my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username, $week, $year;
 
 printf "URL = $url\n" if ($debug);
+printf "period = $period\n" if ($debug);
 
 my $mech = WWW::Mechanize->new();
 $mech->credentials($username, $password);
