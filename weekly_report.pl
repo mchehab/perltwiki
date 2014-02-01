@@ -17,12 +17,12 @@ my $help;
 my $force_week;
 
 GetOptions(
-	"--force-week=s" => \$force_week,
+	"--week=s" => \$force_week,
 	"--help" => \$help,
 );
 
 if ($help) {
-	printf "%s [--force-week=week]\n", $0;
+	printf "%s [--week=week]\n", $0;
 	exit 1;
 }
 
