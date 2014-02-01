@@ -2,6 +2,7 @@
 use strict;
 use WWW::Mechanize;
 use Date::Calc qw(:all);
+use Getopt::Long;
 
 my $name = "";
 my $username = "";
@@ -12,6 +13,18 @@ my $dry_run = 0;
 my $debug = 0;
 my $commits_by_date = "~/bin/commits_by_date.sh";
 my $author = "";
+my $help;
+my $force_week;
+
+GetOptions(
+	"--force-week=s" => \$force_week,
+	"--help" => \$help,
+);
+
+if ($help) {
+	printf "%s [--force-week=week]\n", $0;
+	exit 1;
+}
 
 my @sessions = (
 	'Summary',
@@ -44,6 +57,8 @@ $year += 1900;
 $month += 1;
 
 my ($week, $y) = Week_of_Year($year, $month, $day);
+
+$week = $force_week if ($force_week);
 
 my @saturday = Add_Delta_Days(Monday_of_Week($week - 1, $year), 6);
 my @sunday = Add_Delta_Days(Monday_of_Week($week, $year), 5);
