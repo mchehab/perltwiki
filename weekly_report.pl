@@ -92,10 +92,12 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 
 			$reviewed -= $per_author if ($reviewed >= $per_author);
 
+			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
+
 			$data .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 			$data .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
 			$data .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
-			$data .= " | 0 | Mauro report's mechanism |\n";
+			$data .= " | 0 | Mauro report's mechanism |\n\n";
 		}
 	}
 	$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
