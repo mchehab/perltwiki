@@ -52,6 +52,37 @@ my %projects = (
 	'perl Twiki status' => '/devel/perltwiki',
 );
 
+sub get_patch_table($$)
+{
+	my $date1 = shift;
+	my $date2 = shift;
+
+	my $table = "";
+
+	foreach my $proj (keys %projects) {
+		my $dir = $projects{$proj};
+
+		my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
+		my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
+
+		$per_author =~ s/\s+$//;
+		$per_committer =~ s/\s+$//;
+		my $reviewed = $per_committer;
+
+		$reviewed -= $per_author if ($reviewed >= $per_author);
+
+		next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
+
+		printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
+
+		$table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+		$table .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
+		$table .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
+		$table .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
+	}
+	return $table;
+}
+
 my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime();
 
 $year += 1900;
@@ -129,29 +160,7 @@ if ($empty) {
 	}
 }
 
-my $summary_table = "";
-
-foreach my $proj (keys %projects) {
-	my $dir = $projects{$proj};
-
-	my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
-	my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
-
-	$per_author =~ s/\s+$//;
-	$per_committer =~ s/\s+$//;
-	my $reviewed = $per_committer;
-
-	$reviewed -= $per_author if ($reviewed >= $per_author);
-
-	next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
-
-	printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
-
-	$summary_table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
-	$summary_table .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
-	$summary_table .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
-	$summary_table .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
-}
+my $summary_table = get_patch_table($date1, $date2);
 
 $data =~ s/($sum_table_tag)/$summary_table/;
 
