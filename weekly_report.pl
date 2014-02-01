@@ -29,7 +29,7 @@ my @session_body = (
 
 my %projects = (
 	'Kernel media subsystem' => '/devel/v4l/patchwork',
-	'Kernel media not submitted patches' => '/devel/v4l/temp',
+	'Kernel media subsystem under work' => '/devel/v4l/temp',
 	'Kernel EDAC subsystem' => '/devel/edac/edac',
 	'v4l-utils' => '/devel/v4l/v4l-utils',
 	'media build tree' => '/devel/v4l/patchwork',
@@ -88,11 +88,13 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 
 			$per_author =~ s/\s+$//;
 			$per_committer =~ s/\s+$//;
+			my $reviewed = $per_committer;
 
+			$reviewed -= $per_author if ($reviewed >= $per_author);
 
-			$data .= sprintf "---+++ [$proj] Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+			$data .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 			$data .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
-			$data .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$per_committer;
+			$data .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
 			$data .= " | 0 | Mauro report's mechanism |\n";
 		}
 	}
