@@ -104,6 +104,8 @@ my $empty = 0;
 
 $empty = 1 if (!($data =~ m/STARTSECTION/));
 
+my $sum_table_tag = '===SUMMARYTABLE===';
+
 if ($empty) {
 	my $data = sprintf "%TOC%\n\n---+ $period";
 
@@ -114,16 +116,16 @@ if ($empty) {
 
 		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
 		$data .= qx(cat $session_body[$i]);
-		$data .= "===SUMMARYTABLE===" if (!$i);
+		$data .= "$sum_table_tag" if (!$i);
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 	}
 
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
 } else {
-	$data =~ s/(STARTSECTION\{\"Summary\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1===SUMMARYTABLE===\2/s;
+	$data =~ s/(STARTSECTION\{\"Summary\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1$sum_table_tag\2/s;
 
-	if (!($data =~ m/===SUMMARYTABLE===/)) {
-		$data =~ s/(\%ENDSECTION\{\"Summary\"\}.)/===SUMMARYTABLE===\1/s;
+	if (!($data =~ m/$sum_table_tag/)) {
+		$data =~ s/(\%ENDSECTION\{\"Summary\"\}.)/$sum_table_tag\1/s;
 	}
 }
 
@@ -151,7 +153,7 @@ foreach my $proj (keys %projects) {
 	$summary_table .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
 }
 
-$data =~ s/===SUMMARYTABLE===/$summary_table/;
+$data =~ s/($sum_table_tag)/$summary_table/;
 
 print $data if ($debug);
 exit if ($dry_run);
