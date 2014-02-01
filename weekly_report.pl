@@ -8,7 +8,7 @@ my $username = "";
 my $password =  "";
 my $domain = "";
 my $team = "";
-my $dry_run = 1;
+my $dry_run = 0;
 my $debug = 0;
 my $commits_by_date = "~/bin/commits_by_date.sh";
 my $author = "";
@@ -81,8 +81,6 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 		foreach my $proj (keys %projects) {
 			my $dir = $projects{$proj};
 
-			printf "project $proj, directory $dir\n" if ($debug);
-
 			my $per_author = qx(cd $dir && $commits_by_date --author --since $date1 --to $date2 --author chehab --silent);
 			my $per_committer = qx(cd $dir && $commits_by_date --committer --since $date1 --to $date2 --author chehab --silent);
 
@@ -93,6 +91,8 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 			$reviewed -= $per_author if ($reviewed >= $per_author);
 
 			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
+
+			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
 
 			$data .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 			$data .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
@@ -106,11 +106,9 @@ for (my $i = 0; $i < scalar @sessions; $i++) {
 $data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
 
 #print $data if ($debug);
-print $data;
-
+print $data if ($dry_run);
 
 exit if ($dry_run);
-
 
 my $mech = WWW::Mechanize->new();
 $mech->credentials($username, $password);
@@ -122,33 +120,11 @@ if (!$res->is_success) {
 }
 
 my $form = $mech->form_number(0);
-print $form->dump if ($debug > 1);
+my $data = $form->param("text");
 
-exit;
+my $empty = 0;
 
-printf "Form length = %d\n", length($form->dump);
+$empty = 1 if (!($data =~ m/STARTSECTION/));
 
-if (length($form->dump) > 1258) {
-	printf "Week report already submitted.\n";
-	exit;
-}
+print $data if ($debug && !$empty);
 
-
-
-
-$mech->follow_link( n => 3 );
-$mech->follow_link( text_regex => qr/download this/i );
-$mech->follow_link( url => 'http://host.com/index.html' );
-
-$mech->submit_form(
-form_number => 3,
-fields      => {
-username    => 'mungo',
-password    => 'lost-and-alone',
-}
-);
-$mech->submit_form(
-form_name => 'search',
-fields    => { query  => 'pot of gold', },
-button    => 'Search Now'
-);
