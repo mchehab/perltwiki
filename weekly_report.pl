@@ -365,6 +365,7 @@ Where:
 Read the configuration from the file. The configuration file is on .ini format, e. g.:
 
 [global]
+
 	name = My Name
 	username = MyUserName
 	password = MyPassword
@@ -372,13 +373,16 @@ Read the configuration from the file. The configuration file is on .ini format, 
 	team = MyWorkTeam
 
 [project foo]
+
 	path = /devel/foo
 
 [session Summary]
+
 	template = summary.twiki
 	summary = 1
 
 [session Development]
+
 	template = development.twiki
 	patches = 1
 
