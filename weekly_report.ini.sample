@@ -4,8 +4,6 @@
        password = MyPassword
        domain = http://twiki.example.org/
        team = MyWorkTeam
-       debug = 0
-       dry-run = 0
 
 [project Kernel media subsystem]
 	path = /devel/v4l/patchwork

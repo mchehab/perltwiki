@@ -45,11 +45,6 @@ GetOptions(
 	"cfg|config=s" => \$config_file,
 	"week=s" => \$force_week,
 	"year=s" => \$force_year,
-	"name=s" => \$name,
-	"username=s" => \$username,
-	"password=s" => \$password,
-	"domain=s" => \$domain,
-	"team=s" => \$team,
 	"start-date=s" => \$start_date,
 	"dry-run" => \$dry_run,
 	"debug" => \$debug,
@@ -81,12 +76,6 @@ if ($config_file) {
 	$val = $cfg->val('global', 'start-date');
 	$start_date = $val if ($val);
 
-	$val = $cfg->val('global', 'dry-run');
-	$dry_run = $val if ($val);
-
-	$val = $cfg->val('global', 'debug');
-	$debug = $val if ($val);
-
 	foreach my $prj ($cfg->GroupMembers('project')) {
 		my $path = $cfg->val($prj, 'path');
 		$prj =~ s/^\S+\s+//;
@@ -110,8 +99,13 @@ if ($config_file) {
 	}
 }
 
-if ($name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team eq "") {
+if ($config_file eq "" || $name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team eq "") {
 	printf STDERR "ERROR: mandatory parameters not specified\n\n";
+	pod2usage(1);
+}
+
+if (!(scalar @sessions)) {
+	printf STDERR "ERROR: at least one session should be defined at the config file\n\n";
 	pod2usage(1);
 }
 
@@ -349,16 +343,11 @@ weekly_report.pl - Generate and update a weekly report at Twiki, adding git patc
 
 =head1 SYNOPSIS
 
-B<weekly_report.pl> [--config FILE | --name NAME --username USER --password PASS --domain DOMAIN --team TEAM] [--start-date DATE] [--week WEEK] [--year YEAR] [--dry-run] [--debug] [--help] [--man]
+B<weekly_report.pl> --config FILE [--start-date DATE] [--week WEEK] [--year YEAR] [--dry-run] [--debug] [--help] [--man]
 
 Where:
 
 	--config FILE		Config file to be read
-	--name NAME		specify the name of the person to be added at the report
-	--username USER		specify the Twiki's username
-	--password PASS		specify the Twiki's password
-	--domain DOMAIN		specify the Twiki's domain
-	--team TEAM		specify the team where the person belongs
 	--start-date DATE	Starting date to seek for GIT patches (default: Jan 01 2013)
 	--week WEEK		Force a different week, instead of using today's week
 	--year YEAR		Force a different year, instead of using today's year
@@ -381,8 +370,6 @@ Read the configuration from the file. The configuration file is on .ini format, 
 	password = MyPassword
 	domain = http://twiki.example.org/
 	team = MyWorkTeam
-	debug = 0
-	dry-run = 0
 
 [project foo]
 	path = /devel/foo
@@ -395,8 +382,8 @@ Read the configuration from the file. The configuration file is on .ini format, 
 	template = development.twiki
 	patches = 1
 
-
-If not all fields are filled, it will require the missing item(s) to be passed via commandline.
+The configuration file should always passed as a parameter, and should contain at least
+one session, otherwise the script won't work.
 
 =item B<--name NAME>
 
