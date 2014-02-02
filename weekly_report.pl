@@ -58,6 +58,12 @@ my $force_week;
 my $help;
 my $man;
 
+#
+# This is to avoid digging too deeper at the tree looking for
+# potential patches to the report.
+#
+my $start_date = sprintf "%04d-%02d-%02d", 2013, 1, 1;
+
 GetOptions(
 	"week=s" => \$force_week,
 	"name=s" => \$name,
@@ -65,6 +71,7 @@ GetOptions(
 	"password=s" => \$password,
 	"domain=s" => \$domain,
 	"team=s" => \$team,
+	"start_date=s" => \$start_date,
 	"dry-run" => \$dry_run,
 	"debug" => \$debug,
 	'help|?' => \$help,
@@ -91,9 +98,6 @@ sub get_patch_table($$$)
 
 	my $table = "";
 
-	# This is to avoid digging too deeper at the tree
-	my $date1 = sprintf "%04d-%02d-%02d", 2013, 1, 1;
-
 	foreach my $proj (keys %projects) {
 		my $dir = $projects{$proj};
 		my $per_author = 0;
@@ -103,7 +107,7 @@ sub get_patch_table($$$)
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
 
 		if ($summary) {
-			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$date1' |grep '$name'|";
+			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' |grep '$name'|";
 			while (<IN>) {
 				if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
 					my $cs = $1;
@@ -133,7 +137,7 @@ sub get_patch_table($$$)
 			close IN;
 		} else {
 			my $patch = "";
-			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$date1' |grep '$name'|";
+			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' |grep '$name'|";
 			while (<IN>) {
 				if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
 					my $cs = $1;
@@ -310,7 +314,7 @@ weekly_report.pl - Generate and update a weekly report at Twiki, adding git patc
 
 =head1 SYNOPSIS
 
-B<weekly_report.pl> --name NAME --username USER --password PASS --domain DOMAIN --team TEAM [--week WEEK] [--dry-run] [--debug] [--help] [--man]
+B<weekly_report.pl> --name NAME --username USER --password PASS --domain DOMAIN --team TEAM [--start-date DATE] [--week WEEK] [--dry-run] [--debug] [--help] [--man]
 
 Where:
 
@@ -319,6 +323,7 @@ Where:
 	--password PASS		specify the Twiki's password
 	--domain DOMAIN		specify the Twiki's domain
 	--team TEAM		specify the team where the person belongs
+	--start_date DATE	Starting date to seek for GIT patches (default: Jan 01 2013)
 	--week WEEK		Force a different week, instead of using today's week
 	--dry-run		Don't update the Twiki page
 	--debug			Enable debug
@@ -343,7 +348,15 @@ Specify the Twiki's password.
 
 =item B<--domain DOMAIN>
 
-Specify the Twiki's domain.
+Specify the Twiki's URL domain.
+
+=item B<--start_date DATE>
+
+In order to speedup the script, don't seek the entire GIT revlist, but,
+instead, seek only for patches after B<DATE>.
+
+If not specified, the script will assume the default (currently,
+the first day of January in 2013.
 
 =item B<--team TEAM>
 
