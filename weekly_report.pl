@@ -210,6 +210,12 @@ my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime();
 $year += 1900;
 $month += 1;
 
+#
+# As, for the reports, the weeks start on Sunday, be sure that the script
+# will get the right week. So, add one day to fix it.
+#
+($year, $month, $day) = Add_Delta_Days($year, $month, $day, 1) if (!$wday);
+
 my ($week, $y) = Week_of_Year($year, $month, $day);
 
 $week = $force_week if ($force_week);
