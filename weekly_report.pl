@@ -7,6 +7,46 @@ use Cwd;
 use HTML::Entities;
 use Pod::Usage;
 
+#
+# Please change the tables below if you want/need different report sessions
+#
+
+my @sessions = (
+	'Summary',
+	'Meetings/Trips',
+	'Issues',
+	'Development'
+);
+
+my @session_body = (
+	"summary.twiki",
+	"meetings.twiki",
+	"issues.twiki",
+	"development.twiki",
+);
+
+#
+# Please describe the GIT tree names and their locations below
+#
+
+my %projects = (
+	'Kernel media subsystem' => '/devel/v4l/patchwork',
+	'Kernel EDAC subsystem' => '/devel/edac/edac',
+	'v4l-utils' => '/devel/v4l/v4l-utils',
+	'media build tree' => '/devel/v4l/media_build',
+	'xawtv version 3' => '/devel/v4l/xawtv3',
+	'Rasdaemon' => '/devel/edac/rasdaemon',
+	'perl Twiki status' => '/devel/perltwiki',
+);
+
+#
+# Don't need to touch on anything below that to customize the script
+#
+
+#
+# User's option handling
+#
+
 my $name = "";
 my $username = "";
 my $password =  "";
@@ -39,30 +79,9 @@ if ($name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team
 	pod2usage(1);
 }
 
-my @sessions = (
-	'Summary',
-	'Meetings/Trips',
-	'Issues',
-	'Development'
-);
-
-my @session_body = (
-	"summary.twiki",
-	"meetings.twiki",
-	"issues.twiki",
-	"development.twiki",
-);
-
-my %projects = (
-	'Kernel media subsystem' => '/devel/v4l/patchwork',
-#	'Kernel media subsystem under work' => '/devel/v4l/temp',
-	'Kernel EDAC subsystem' => '/devel/edac/edac',
-	'v4l-utils' => '/devel/v4l/v4l-utils',
-	'media build tree' => '/devel/v4l/media_build',
-	'xawtv version 3' => '/devel/v4l/xawtv3',
-	'Rasdaemon' => '/devel/edac/rasdaemon',
-	'perl Twiki status' => '/devel/perltwiki',
-);
+#
+# Get GIT patch statistics and patch table
+#
 
 sub get_patch_table($$$)
 {
@@ -143,6 +162,10 @@ sub get_patch_table($$$)
 	return $table;
 }
 
+#
+# Replace an already existing patch table/patch summary
+#
+
 sub replace_table($$$$$$)
 {
 	my $table_tag = shift;
@@ -167,6 +190,17 @@ sub replace_table($$$$$$)
 	return $data;
 }
 
+######
+# MAIN
+######
+
+#
+# Handle dates. The week stats on Monday, in Perl.
+# Please notice that the code below considers a week starting on Sunday
+#
+
+my $period;
+
 my ($sec,$min,$hour,$day,$month,$year,$wday,$yday,$isdst) = localtime();
 
 $year += 1900;
@@ -183,7 +217,7 @@ printf "From %04d-%02d-%02d to %04d-%02d-%02d\n", @saturday, @sunday if ($debug)
 
 my $month1 = Month_to_Text($saturday[1]);
 
-my $period;
+# Create a week's description
 
 if ($saturday[0] != $sunday[0]) {
 	my $month2 = Month_to_Text($sunday[1]);
@@ -195,10 +229,18 @@ if ($saturday[0] != $sunday[0]) {
 	$period = sprintf "$name - Week %02d: %s %02d-%02d\n", $week, $month1, $saturday[2], $sunday[2];
 }
 
+#
+# Generate the week's URL
+#
+
 my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username, $week, $year;
 
 printf "URL = $url\n" if ($debug);
 printf "period = $period\n" if ($debug);
+
+#
+# Read the Twiki's page
+#
 
 my $mech = WWW::Mechanize->new();
 $mech->credentials($username, $password);
@@ -213,8 +255,12 @@ if (!$res->is_success) {
 my $form = $mech->form_number(0);
 my $data = $form->param("text");
 
-my $empty = 0;
+#
+# Detect if the week was not filled yet. In that case, fills it from the
+# templates
+#
 
+my $empty = 0;
 $empty = 1 if (!($data =~ m/STARTSECTION/));
 
 my $sum_table_tag = '===SUMMARYTABLE===';
@@ -236,11 +282,19 @@ if ($empty) {
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", $year, $month, $day;
 }
 
+#
+# Replace the summary and patch table, using GIT data
+#
+
 $data = replace_table($sum_table_tag, $data, 'Summary', \@saturday, \@sunday, 1);
 $data = replace_table($patch_table_tag, $data, 'Development', \@saturday, \@sunday, 0);
 
 print $data if ($debug);
 exit if ($dry_run);
+
+#
+# Update the Twiki's page
+#
 
 print "Updating $url\n" if (!$debug);
 
