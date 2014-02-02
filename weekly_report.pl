@@ -102,6 +102,7 @@ sub get_patch_table($$$)
 		my $dir = $projects{$proj};
 		my $per_author = 0;
 		my $per_committer = 0;
+		my $reviewed = 0;
 
 		my $since = (Date_to_Days(@saturday) - Date_to_Days(1970, 01, 01)) * 60 * 60 * 24;
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
@@ -115,15 +116,17 @@ sub get_patch_table($$$)
 					my $an = $3;
 					my $cd = $4;
 					my $cn = $5;
+					my $check_review;
 
-					$per_author++ if ($ad >= $since && $ad <= $to && $an =~ m/($name)/);
-					$per_committer++ if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/);
+					if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
+						$per_author++;
+					}
+					if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
+						$per_committer++;
+						$reviewed++ if (!($an =~ m/($name)/));
+					}
 				}
 			}
-
-			my $reviewed = $per_committer;
-
-			$reviewed -= $per_author if ($reviewed >= $per_author);
 
 			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
 
