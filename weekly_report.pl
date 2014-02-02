@@ -26,20 +26,6 @@ my @session_body = (
 );
 
 #
-# Please describe the GIT tree names and their locations below
-#
-
-my %projects = (
-	'Kernel media subsystem' => '/devel/v4l/patchwork',
-	'Kernel EDAC subsystem' => '/devel/edac/edac',
-	'v4l-utils' => '/devel/v4l/v4l-utils',
-	'media build tree' => '/devel/v4l/media_build',
-	'xawtv version 3' => '/devel/v4l/xawtv3',
-	'Rasdaemon' => '/devel/edac/rasdaemon',
-	'perl Twiki status' => '/devel/perltwiki',
-);
-
-#
 # Don't need to touch on anything below that to customize the script
 #
 
@@ -59,6 +45,7 @@ my $force_year;
 my $help;
 my $man;
 my $config_file;
+my %projects;
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -111,6 +98,12 @@ if ($config_file) {
 
 	$val = $cfg->val('global', 'debug');
 	$debug = $val if ($val);
+
+	foreach my $prj ($cfg->GroupMembers('project')) {
+		my $path = $cfg->val($prj, 'path');
+		print "project $prj, path $path\n";
+		$projects{$prj} = $path;
+	}
 }
 
 if ($name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team eq "") {

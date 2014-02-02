@@ -7,3 +7,24 @@
        debug = 0
        dry-run = 0
 
+[project Kernel media subsystem]
+	path = /devel/v4l/patchwork
+
+[project Kernel EDAC subsystem]
+	path = /devel/edac/edac
+
+[project v4l-utils]
+	path = /devel/v4l/v4l-utils
+
+[project media build tree]
+	path = /devel/v4l/media_build
+
+[project xawtv version 3]
+	path = /devel/v4l/xawtv3
+
+[project Rasdaemon]
+	path = /devel/edac/rasdaemon
+
+[project perl Twiki automation]
+	path = /devel/perltwiki
+
