@@ -5,6 +5,7 @@ use Date::Calc qw(:all);
 use Getopt::Long;
 use Cwd;
 use HTML::Entities;
+use Pod::Usage;
 
 my $name = "";
 my $username = "";
@@ -13,16 +14,20 @@ my $domain = "";
 my $team = "";
 my $dry_run = 0;
 my $debug = 0;
-my $author = "";
-my $help;
 my $force_week;
+my $help;
+my $man;
 
 GetOptions(
-	"--week=s" => \$force_week,
-	"--dry-run" => \$dry_run,
-	"--debug" => \$debug,
-	"--help" => \$help,
-);
+	"week=s" => \$force_week,
+	"dry-run" => \$dry_run,
+	"debug" => \$debug,
+	'help|?' => \$help,
+	man => \$man
+) or pod2usage(2);
+
+pod2usage(1) if $help;
+pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 
 if ($help) {
 	printf "%s [--week=week] [--debug] [--dry-run]\n", $0;
@@ -238,3 +243,72 @@ $form->param("text", $data);
 $form->param("forcenewrevision", 1);
 $mech->submit();
 
+__END__
+
+=head1 NAME
+
+weekly_report.pl - Generate and update a weekly report at Twiki, adding git patch statistics
+
+=head1 SYNOPSIS
+
+B<weekly_report.pl>  [--week=WEEK] [--dry-run] [--debug] [--help] [--man]
+
+Where:
+
+	--week=WEEK		Force a different week, instead of using today's week
+	--dry-run		Don't update the Twiki page
+	--debug			Enable debug
+	--help			Show this summary
+	--man			Show a man page
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<--week> WEEK
+
+Specify the week of the year, starting with 1.
+
+=item B<--dry-run>
+
+Do everything, except for updating the Twiki page. Useful for debug purposes.
+
+=item B<--debug>
+
+Enable debug messages. Useful when seeking for a trouble at the script.
+
+=item B<--help>
+
+Prints a brief help message and exits.
+
+=item B<--man>
+
+Prints the manual page and exits.
+
+=back
+
+=head1 DESCRIPTION
+
+B<weekly_report.pl> Generate and update a weekly report at Twiki, adding git patch statistic.
+
+This script is useful for those that need/want to generate per-week reports, describing the
+activities done along the week, and generating patch statistics, and patch tables.
+
+Both patch statistics and patch tables require git repositories, although it should not be
+hard to change the logic to also accept other types of SCM.
+
+=head1 BUGS
+
+Report bugs to Mauro Carvalho Chehab <m.chehab@samsung.com>
+
+=head1 COPYRIGHT
+
+Copyright (c) 2014 by Mauro Carvalho Chehab <m.chehab@samsung.com>.
+Copyright (c) 2014 by Samsung Eletrônica da Amazônia.
+
+License GPLv2: GNU GPL version 2 <http://gnu.org/licenses/gpl.html>.
+
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+
+=cut
