@@ -1,0 +1,9 @@
+[global]
+       name = My Name
+       username = MyUserName
+       password = MyPassword
+       domain = http://twiki.example.org/
+       team = MyWorkTeam
+       debug = 0
+       dry-run = 0
+

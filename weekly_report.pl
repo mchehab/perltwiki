@@ -5,6 +5,7 @@ use Date::Calc qw(:all);
 use Getopt::Long;
 use HTML::Entities;
 use Pod::Usage;
+use Config::IniFiles;
 
 #
 # Please change the tables below if you want/need different report sessions
@@ -54,8 +55,10 @@ my $team = "";
 my $dry_run = 0;
 my $debug = 0;
 my $force_week;
+my $force_year;
 my $help;
 my $man;
+my $config_file;
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -64,13 +67,15 @@ my $man;
 my $start_date = sprintf "%04d-%02d-%02d", 2013, 1, 1;
 
 GetOptions(
+	"cfg|config=s" => \$config_file,
 	"week=s" => \$force_week,
+	"year=s" => \$force_year,
 	"name=s" => \$name,
 	"username=s" => \$username,
 	"password=s" => \$password,
 	"domain=s" => \$domain,
 	"team=s" => \$team,
-	"start_date=s" => \$start_date,
+	"start-date=s" => \$start_date,
 	"dry-run" => \$dry_run,
 	"debug" => \$debug,
 	'help|?' => \$help,
@@ -79,6 +84,34 @@ GetOptions(
 
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
+
+if ($config_file) {
+	my $cfg = Config::IniFiles->new(-file => $config_file);
+
+	my $val = $cfg->val('global', 'name');
+	$name = $val if ($val);
+
+	$val = $cfg->val('global', 'username');
+	$username = $val if ($val);
+
+	$val = $cfg->val('global', 'password');
+	$password = $val if ($val);
+
+	$val = $cfg->val('global', 'domain');
+	$domain = $val if ($val);
+
+	$val = $cfg->val('global', 'team');
+	$team = $val if ($val);
+
+	$val = $cfg->val('global', 'start-date');
+	$start_date = $val if ($val);
+
+	$val = $cfg->val('global', 'dry-run');
+	$dry_run = $val if ($val);
+
+	$val = $cfg->val('global', 'debug');
+	$debug = $val if ($val);
+}
 
 if ($name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team eq "") {
 	printf STDERR "ERROR: mandatory parameters not specified\n\n";
@@ -215,6 +248,7 @@ my $period;
 my ($week, $year) = Week_of_Year(Add_Delta_Days(Today(), 1));
 
 $week = $force_week if ($force_week);
+$year = $force_year if ($force_year);
 
 my @saturday = Add_Delta_Days(Monday_of_Week($week, $year), -1);
 my @sunday = Add_Delta_Days(Monday_of_Week($week, $year), 5);
@@ -316,17 +350,19 @@ weekly_report.pl - Generate and update a weekly report at Twiki, adding git patc
 
 =head1 SYNOPSIS
 
-B<weekly_report.pl> --name NAME --username USER --password PASS --domain DOMAIN --team TEAM [--start-date DATE] [--week WEEK] [--dry-run] [--debug] [--help] [--man]
+B<weekly_report.pl> [--config FILE | --name NAME --username USER --password PASS --domain DOMAIN --team TEAM] [--start-date DATE] [--week WEEK] [--year YEAR] [--dry-run] [--debug] [--help] [--man]
 
 Where:
 
+	--config FILE		Config file to be read
 	--name NAME		specify the name of the person to be added at the report
 	--username USER		specify the Twiki's username
 	--password PASS		specify the Twiki's password
 	--domain DOMAIN		specify the Twiki's domain
 	--team TEAM		specify the team where the person belongs
-	--start_date DATE	Starting date to seek for GIT patches (default: Jan 01 2013)
+	--start-date DATE	Starting date to seek for GIT patches (default: Jan 01 2013)
 	--week WEEK		Force a different week, instead of using today's week
+	--year YEAR		Force a different year, instead of using today's year
 	--dry-run		Don't update the Twiki page
 	--debug			Enable debug
 	--help			Show this summary
@@ -335,6 +371,21 @@ Where:
 =head1 OPTIONS
 
 =over 8
+
+=item B<--config FILE>
+
+Read the configuration from the file. The configuration file is on .ini format, e. g.:
+
+[global]
+	name = My Name
+	username = MyUserName
+	password = MyPassword
+	domain = http://twiki.example.org/
+	team = MyWorkTeam
+	debug = 0
+	dry-run = 0
+
+If not all fields are filled, it will require the missing item(s) to be passed via commandline.
 
 =item B<--name NAME>
 
@@ -352,13 +403,15 @@ Specify the Twiki's password.
 
 Specify the Twiki's URL domain.
 
-=item B<--start_date DATE>
+=item B<--start-date DATE>
 
 In order to speedup the script, don't seek the entire GIT revlist, but,
 instead, seek only for patches after B<DATE>.
 
+The date format is: year-mo-dy
+
 If not specified, the script will assume the default (currently,
-the first day of January in 2013.
+the first day of January in 2013, e. g. 2013-01-01.
 
 =item B<--team TEAM>
 
@@ -367,6 +420,10 @@ Specify the team where the person belongs.
 =item B<--week> WEEK
 
 Specify the week of the year, starting with 1.
+
+=item B<--year> YEAR
+
+Specify the 4-digit year. The default is the current year.
 
 =item B<--dry-run>
 
