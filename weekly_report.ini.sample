@@ -28,3 +28,16 @@
 [project perl Twiki automation]
 	path = /devel/perltwiki
 
+[session Summary]
+	template = ~/summary.twiki
+	summary = 1
+
+[session Meetings/Trips]
+	template = ~/meetings.twiki
+
+[session Issues]
+	template = ~/issues.twiki
+
+[session Development]
+	template = development.twiki
+	patches = 1

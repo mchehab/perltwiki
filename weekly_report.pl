@@ -7,26 +7,10 @@ use HTML::Entities;
 use Pod::Usage;
 use Config::IniFiles;
 
-#
-# Please change the tables below if you want/need different report sessions
-#
-
-my @sessions = (
-	'Summary',
-	'Meetings/Trips',
-	'Issues',
-	'Development'
-);
-
-my @session_body = (
-	"summary.twiki",
-	"meetings.twiki",
-	"issues.twiki",
-	"development.twiki",
-);
 
 #
-# Don't need to touch on anything below that to customize the script
+# Don't need to touch on anything below that to customize the script.
+# All customization can be done via a config file
 #
 
 #
@@ -46,6 +30,10 @@ my $help;
 my $man;
 my $config_file;
 my %projects;
+my @sessions;
+my @session_body;
+my $sum_session;
+my $patch_session;
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -101,8 +89,24 @@ if ($config_file) {
 
 	foreach my $prj ($cfg->GroupMembers('project')) {
 		my $path = $cfg->val($prj, 'path');
-		print "project $prj, path $path\n";
+		$prj =~ s/^\S+\s+//;
+		print "config: project $prj, path $path\n" if ($debug);
 		$projects{$prj} = $path;
+	}
+
+	foreach my $session ($cfg->GroupMembers('session')) {
+		my $has_summary = $cfg->val($session, 'summary');
+		my $has_patch = $cfg->val($session, 'patches');
+		my $template = $cfg->val($session, 'template');
+		$session =~ s/^\S+\s+//;
+		printf "config: session $session, template $template%s%s\n",
+			$has_summary ? ", has patch summary" : "",
+			$has_patch ? ", has patch table" : "" if ($debug);
+		push @sessions, $session;
+		push @session_body, $template;
+
+		$sum_session = $session if $has_summary;
+		$patch_session = $session if $has_patch;
 	}
 }
 
@@ -185,7 +189,7 @@ sub get_patch_table($$$)
 			}
 			close IN;
 			if ($patch ne "") {
-				$table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+				$table .= sprintf "---+++ $proj Patch Table\n%%TABLE{headerrows=\"1\"}%%\n";
 				$table .= sprintf '| *Changeset* | *Date* | *Author* | *Commit Date* | *Comitter* | *Subject* |';
 				$table .= "\n$patch\n";
 			}
@@ -206,6 +210,8 @@ sub replace_table($$$$$$)
 	my $date1 = shift;
 	my $date2 = shift;
 	my $summary = shift;
+
+	print "replace table $session\n" if ($debug);
 
 	# If the session has tables remove
 	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1\2\3$table_tag\4/s;
@@ -269,7 +275,7 @@ if ($saturday[0] != $sunday[0]) {
 my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username, $week, $year;
 
 printf "URL = $url\n" if ($debug);
-printf "period = $period\n" if ($debug);
+printf "period = $period" if ($debug);
 
 #
 # Read the Twiki's page
@@ -308,8 +314,8 @@ if ($empty) {
 
 		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
 		$data .= qx(cat $session_body[$i]);
-		$data .= $sum_table_tag if ($s eq 'Summary');
-		$data .= $patch_table_tag if ($s eq 'Development');
+		$data .= $sum_table_tag if ($s eq $sum_session);
+		$data .= $patch_table_tag if ($s eq $patch_session);
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 	}
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", Today();
@@ -319,8 +325,8 @@ if ($empty) {
 # Replace the summary and patch table, using GIT data
 #
 
-$data = replace_table($sum_table_tag, $data, 'Summary', \@saturday, \@sunday, 1);
-$data = replace_table($patch_table_tag, $data, 'Development', \@saturday, \@sunday, 0);
+$data = replace_table($sum_table_tag, $data, $sum_session, \@saturday, \@sunday, 1) if ($sum_session);
+$data = replace_table($patch_table_tag, $data, $patch_session, \@saturday, \@sunday, 0) if ($patch_session);
 
 print $data if ($debug);
 exit if ($dry_run);
@@ -377,6 +383,18 @@ Read the configuration from the file. The configuration file is on .ini format, 
 	team = MyWorkTeam
 	debug = 0
 	dry-run = 0
+
+[project foo]
+	path = /devel/foo
+
+[session Summary]
+	template = summary.twiki
+	summary = 1
+
+[session Development]
+	template = development.twiki
+	patches = 1
+
 
 If not all fields are filled, it will require the missing item(s) to be passed via commandline.
 
