@@ -20,6 +20,11 @@ my $man;
 
 GetOptions(
 	"week=s" => \$force_week,
+	"name=s" => \$name,
+	"username=s" => \$username,
+	"password=s" => \$password,
+	"domain=s" => \$domain,
+	"team=s" => \$team,
 	"dry-run" => \$dry_run,
 	"debug" => \$debug,
 	'help|?' => \$help,
@@ -29,9 +34,9 @@ GetOptions(
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
 
-if ($help) {
-	printf "%s [--week=week] [--debug] [--dry-run]\n", $0;
-	exit 1;
+if ($name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team eq "") {
+	printf STDERR "ERROR: mandatory parameters not specified\n\n";
+	pod2usage(1);
 }
 
 my @sessions = (
@@ -251,11 +256,16 @@ weekly_report.pl - Generate and update a weekly report at Twiki, adding git patc
 
 =head1 SYNOPSIS
 
-B<weekly_report.pl>  [--week=WEEK] [--dry-run] [--debug] [--help] [--man]
+B<weekly_report.pl> --name NAME --username USER --password PASS --domain DOMAIN --team TEAM [--week WEEK] [--dry-run] [--debug] [--help] [--man]
 
 Where:
 
-	--week=WEEK		Force a different week, instead of using today's week
+	--name NAME		specify the name of the person to be added at the report
+	--username USER		specify the Twiki's username
+	--password PASS		specify the Twiki's password
+	--domain DOMAIN		specify the Twiki's domain
+	--team TEAM		specify the team where the person belongs
+	--week WEEK		Force a different week, instead of using today's week
 	--dry-run		Don't update the Twiki page
 	--debug			Enable debug
 	--help			Show this summary
@@ -264,6 +274,26 @@ Where:
 =head1 OPTIONS
 
 =over 8
+
+=item B<--name NAME>
+
+Specify the name of the person to be added at the report.
+
+=item B<--username USER>
+
+Specify the Twiki's username.
+
+=item B<--password PASS>
+
+Specify the Twiki's password.
+
+=item B<--domain DOMAIN>
+
+Specify the Twiki's domain.
+
+=item B<--team TEAM>
+
+Specify the team where the person belongs.
 
 =item B<--week> WEEK
 
@@ -296,6 +326,12 @@ activities done along the week, and generating patch statistics, and patch table
 
 Both patch statistics and patch tables require git repositories, although it should not be
 hard to change the logic to also accept other types of SCM.
+
+It should be noticed that the git repository locations and the report sessions are
+currently described on some tables inside the source code.
+
+For the sessions, the script will automatically fill an empty week with the contents of the
+*.twiki data.
 
 =head1 BUGS
 
