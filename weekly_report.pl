@@ -6,7 +6,7 @@ use Getopt::Long;
 use HTML::Entities;
 use Pod::Usage;
 use Config::IniFiles;
-
+use POSIX;
 
 #
 # Don't need to touch on anything below that to customize the script.
@@ -110,6 +110,18 @@ if (!(scalar @sessions)) {
 }
 
 #
+# Convert from epoch to year-mo-dy
+#
+sub epoch_to_text($)
+{
+	my $epoch = shift;
+
+	my @date = Add_Delta_Days(1970, 01, 01, floor($epoch / (60 * 60 * 24)));
+
+	return sprintf "%04d-%02d-%02d", @date;
+}
+
+#
 # Get GIT patch statistics and patch table
 #
 
@@ -175,8 +187,8 @@ sub get_patch_table($$$)
 
 					next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
 
-					$ad = sprintf "%04d-%02d-%02d", Add_Delta_Days(1970, 01, 01, ($ad / (60 * 60 * 24)));
-					$cd = sprintf "%04d-%02d-%02d", Add_Delta_Days(1970, 01, 01, ($cd / (60 * 60 * 24)));
+					$ad = epoch_to_text($ad);
+					$cd = epoch_to_text($cd);
 
 					$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad, encode_entities($an), $cd, encode_entities($cn), $s;
 				}
