@@ -168,7 +168,7 @@ sub get_patch_table($$$)
 			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
 
 			$table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
-			$table .= sprintf '| *Submitted* | *Committed* | *Reviewed* | *GBM Requested* | *Notes/Collection Mechanism* |';
+			$table .= sprintf '| *Submitted* | *Committed by me* | *Reviewed by me* | *GBM Requested* | *Notes/Collection Mechanism* |';
 			$table .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
 			$table .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
 
