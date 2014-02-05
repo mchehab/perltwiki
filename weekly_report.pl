@@ -197,10 +197,19 @@ sub get_patch_table($$$)
 
 					next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
 
-					$ad = epoch_to_text($ad);
-					$cd = epoch_to_text($cd);
 
-					$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad, encode_entities($an), $cd, encode_entities($cn), $s;
+					my $ad_txt = epoch_to_text($ad);
+					my $cd_txt = epoch_to_text($cd);
+
+					if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
+						$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
+					}
+
+					if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
+						$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
+					}
+
+					$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad_txt, encode_entities($an), $cd_txt, encode_entities($cn), $s;
 				}
 			}
 			close IN;
