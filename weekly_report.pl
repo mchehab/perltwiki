@@ -224,7 +224,7 @@ sub replace_table($$$$$$)
 	print "replace table $session\n" if ($debug);
 
 	# If the session has tables remove
-	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+\+\s+.*?(\%ENDSECTION)/\1\2\3$table_tag\4/s;
+	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+*\s+.*?(\%ENDSECTION)/\1\2\3$table_tag\4/s;
 
 	# If the session doesn't have a session tag, add it
 	if (!($data =~ m/$table_tag/)) {
@@ -234,7 +234,7 @@ sub replace_table($$$$$$)
 	my $summary_table = get_patch_table($date1, $date2, $summary);
 
 	if ($summary_table ne "") {
-		my $table = sprintf "---+++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+		my $table = sprintf "---+++++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 		$table .= sprintf '| *Project* | *Submitted and merged* | *Committed by me* | *Reviewed by me* | *GBM Requested* |';
 		$table .= "\n$summary_table\n";
 		$table .= qx(cat $summary_footer);
