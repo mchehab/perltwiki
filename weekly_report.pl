@@ -163,14 +163,11 @@ sub get_patch_table($$$)
 				}
 			}
 
-			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
+#			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
 
 			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
 
-			$table .= sprintf "---+++ $proj Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
-			$table .= sprintf '| *Submitted* | *Committed by me* | *Reviewed by me* | *GBM Requested* | *Notes/Collection Mechanism* |';
-			$table .= "\n| " . $per_author . " | " . $per_committer.	" | " .	$reviewed;
-			$table .= " | 0 | [[MauroChehabPerlTwiki][Mauro Chehab report's own mechanism]] |\n\n";
+			$table .= "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | 0 |\n";
 
 			close IN;
 		} else {
@@ -228,6 +225,14 @@ sub replace_table($$$$$$)
 	}
 
 	my $summary_table = get_patch_table($date1, $date2, $summary);
+
+	if ($summary_table ne "") {
+		my $table = sprintf "---+++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+		$table .= sprintf '| *Project* | *Submitted and merged* | *Committed by me* | *Reviewed by me* | *GBM Requested* |';
+		$table .= "\n$summary_table\n";
+
+		$summary_table = $table;
+	}
 
 	$data =~ s/($table_tag)/$summary_table/;
 
