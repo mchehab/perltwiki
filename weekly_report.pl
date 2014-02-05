@@ -37,6 +37,7 @@ my @session_body;
 my $sum_session;
 my $patch_session;
 my $summary_footer;
+my $patch_footer;
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -78,6 +79,9 @@ if ($config_file) {
 
 	$val = $cfg->val('global', 'summary_footer');
 	$summary_footer = $val if ($val);
+
+	$val = $cfg->val('global', 'patch_footer');
+	$patch_footer = $val if ($val);
 
 	$val = $cfg->val('global', 'start-date');
 	$start_date = $val if ($val);
@@ -240,9 +244,11 @@ sub replace_table($$$$$$)
 			my $sumtable = sprintf "---+++++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 			$sumtable .= sprintf '| *Project* | *Submitted and merged* | *Committed by me* | *Reviewed by me* | *GBM Requested* |';
 			$sumtable .= "\n$table\n";
-			$sumtable .= qx(cat $summary_footer) if ($summary);
+			$sumtable .= qx(cat $summary_footer);
 			$table = $sumtable;
 		}
+	} else {
+		$table .= qx(cat $patch_footer);
 	}
 
 	$data =~ s/($table_tag)/$table/;

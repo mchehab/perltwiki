@@ -5,6 +5,7 @@
 	domain = http://twiki.example.org/
 	team = MyWorkTeam
 	summary_footer = ~/summary_footer.twiki
+	patch_footer = ~/patch_footer.twiki
 
 [project Kernel media subsystem]
 	path = /devel/v4l/patchwork
