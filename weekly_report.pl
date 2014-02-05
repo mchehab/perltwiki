@@ -199,7 +199,7 @@ sub get_patch_table($$$)
 			}
 			close IN;
 			if ($patch ne "") {
-				$table .= sprintf "---+++ $proj Patch Table\n%%TABLE{headerrows=\"1\"}%%\n";
+				$table .= sprintf "---+++++ $proj Patch Table\n%%TABLE{headerrows=\"1\"}%%\n";
 				$table .= sprintf '| *Changeset* | *Date* | *Author* | *Commit Date* | *Comitter* | *Subject* |';
 				$table .= "\n$patch\n";
 			}
@@ -231,17 +231,19 @@ sub replace_table($$$$$$)
 		$data =~ s/(\%ENDSECTION\{\")($session)(\"\}.)/$table_tag\1\2\3/s;
 	}
 
-	my $summary_table = get_patch_table($date1, $date2, $summary);
+	my $table = get_patch_table($date1, $date2, $summary);
 
-	if ($summary_table ne "") {
-		my $table = sprintf "---+++++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
-		$table .= sprintf '| *Project* | *Submitted and merged* | *Committed by me* | *Reviewed by me* | *GBM Requested* |';
-		$table .= "\n$summary_table\n";
-		$table .= qx(cat $summary_footer);
-		$summary_table = $table;
+	if ($summary) {
+		if ($table ne "") {
+			my $sumtable = sprintf "---+++++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
+			$sumtable .= sprintf '| *Project* | *Submitted and merged* | *Committed by me* | *Reviewed by me* | *GBM Requested* |';
+			$sumtable .= "\n$table\n";
+			$sumtable .= qx(cat $summary_footer) if ($summary);
+			$table = $sumtable;
+		}
 	}
 
-	$data =~ s/($table_tag)/$summary_table/;
+	$data =~ s/($table_tag)/$table/;
 
 	return $data;
 }
