@@ -29,6 +29,7 @@ my $force_year;
 my $help;
 my $man;
 my $config_file;
+my @project_name;
 my %projects;
 my %show_prj_empty;
 my @sessions;
@@ -87,6 +88,7 @@ if ($config_file) {
 		$prj =~ s/^\S+\s+//;
 		print "config: project $prj, path $path\n" if ($debug);
 		$projects{$prj} = $path;
+		push @project_name, $prj;
 		$show_prj_empty{$prj} = $show_empty if ($show_empty);
 	}
 
@@ -140,7 +142,7 @@ sub get_patch_table($$$)
 
 	my $table = "";
 
-	foreach my $proj (keys %projects) {
+	foreach my $proj (@project_name) {
 		my $dir = $projects{$proj};
 		my $per_author = 0;
 		my $per_committer = 0;
