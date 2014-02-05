@@ -35,6 +35,7 @@ my @sessions;
 my @session_body;
 my $sum_session;
 my $patch_session;
+my $summary_footer;
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -73,6 +74,9 @@ if ($config_file) {
 
 	$val = $cfg->val('global', 'team');
 	$team = $val if ($val);
+
+	$val = $cfg->val('global', 'summary_footer');
+	$summary_footer = $val if ($val);
 
 	$val = $cfg->val('global', 'start-date');
 	$start_date = $val if ($val);
@@ -233,7 +237,7 @@ sub replace_table($$$$$$)
 		my $table = sprintf "---+++ Patch Summary\n%%TABLE{headerrows=\"1\"}%%\n";
 		$table .= sprintf '| *Project* | *Submitted and merged* | *Committed by me* | *Reviewed by me* | *GBM Requested* |';
 		$table .= "\n$summary_table\n";
-
+		$table .= qx(cat $summary_footer);
 		$summary_table = $table;
 	}
 

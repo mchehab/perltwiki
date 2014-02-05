@@ -1,9 +1,10 @@
 [global]
-       name = My Name
-       username = MyUserName
-       password = MyPassword
-       domain = http://twiki.example.org/
-       team = MyWorkTeam
+	name = My Name
+	username = MyUserName
+	password = MyPassword
+	domain = http://twiki.example.org/
+	team = MyWorkTeam
+	summary_footer = ~/summary_footer.twiki
 
 [project Kernel media subsystem]
 	path = /devel/v4l/patchwork
