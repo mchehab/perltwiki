@@ -30,6 +30,7 @@ my $help;
 my $man;
 my $config_file;
 my %projects;
+my %show_prj_empty;
 my @sessions;
 my @session_body;
 my $sum_session;
@@ -78,9 +79,11 @@ if ($config_file) {
 
 	foreach my $prj ($cfg->GroupMembers('project')) {
 		my $path = $cfg->val($prj, 'path');
+		my $show_empty = $cfg->val($prj, 'show_empty');
 		$prj =~ s/^\S+\s+//;
 		print "config: project $prj, path $path\n" if ($debug);
 		$projects{$prj} = $path;
+		$show_prj_empty{$prj} = $show_empty if ($show_empty);
 	}
 
 	foreach my $session ($cfg->GroupMembers('session')) {
@@ -163,7 +166,7 @@ sub get_patch_table($$$)
 				}
 			}
 
-#			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0);
+			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0 && !$show_prj_empty{$proj});
 
 			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
 

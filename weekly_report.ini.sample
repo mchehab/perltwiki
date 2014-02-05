@@ -7,24 +7,31 @@
 
 [project Kernel media subsystem]
 	path = /devel/v4l/patchwork
+	show_empty = 1
 
 [project Kernel EDAC subsystem]
 	path = /devel/edac/edac
+	show_empty = 0
 
 [project v4l-utils]
 	path = /devel/v4l/v4l-utils
+	show_empty = 1
 
 [project media build tree]
 	path = /devel/v4l/media_build
+	show_empty = 0
 
 [project xawtv version 3]
 	path = /devel/v4l/xawtv3
+	show_empty = 0
 
 [project Rasdaemon]
 	path = /devel/edac/rasdaemon
+	show_empty = 0
 
 [project perl Twiki automation]
 	path = /devel/perltwiki
+	show_empty = 0
 
 [session Summary]
 	template = ~/summary.twiki
