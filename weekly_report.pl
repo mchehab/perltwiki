@@ -239,7 +239,7 @@ sub replace_table($$$$$$)
 	print "replace table $session\n" if ($debug);
 
 	# If the session has tables remove
-	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+*\s+.*?(\%ENDSECTION)/\1\2\3$table_tag\4/s;
+	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+*\s+.*?(\%ENDSECTION\{\")($session)/\1\2\3$table_tag\4\5/s;
 
 	# If the session doesn't have a session tag, add it
 	if (!($data =~ m/$table_tag/)) {
@@ -356,6 +356,8 @@ if ($empty) {
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 	}
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", Today();
+
+	print $data if ($debug > 1);
 }
 
 #
