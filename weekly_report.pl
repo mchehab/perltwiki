@@ -32,6 +32,7 @@ my $config_file;
 my @project_name;
 my %projects;
 my %show_prj_empty;
+my %prj_subtree;
 my @sessions;
 my @session_body;
 my $sum_session;
@@ -89,11 +90,13 @@ if ($config_file) {
 	foreach my $prj ($cfg->GroupMembers('project')) {
 		my $path = $cfg->val($prj, 'path');
 		my $show_empty = $cfg->val($prj, 'show_empty');
+		my $subtree = $cfg->val($prj, 'subtree');
 		$prj =~ s/^\S+\s+//;
 		print "config: project $prj, path $path\n" if ($debug);
 		$projects{$prj} = $path;
 		push @project_name, $prj;
 		$show_prj_empty{$prj} = $show_empty if ($show_empty);
+		$prj_subtree{$prj} = $subtree if ($subtree);
 	}
 
 	foreach my $session ($cfg->GroupMembers('session')) {
@@ -155,8 +158,10 @@ sub get_patch_table($$$)
 		my $since = (Date_to_Days(@saturday) - Date_to_Days(1970, 01, 01)) * 60 * 60 * 24;
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
 
+		my $subtree = $prj_subtree{$proj} if ($prj_subtree{$proj});
+
 		if ($summary) {
-			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' |grep '$name'|";
+			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $subtree |grep '$name'|";
 			while (<IN>) {
 				if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
 					my $cs = $1;
@@ -185,7 +190,7 @@ sub get_patch_table($$$)
 			close IN;
 		} else {
 			my $patch = "";
-			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' |grep '$name'|";
+			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $subtree |grep '$name'|";
 			while (<IN>) {
 				if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
 					my $cs = $1;
@@ -367,7 +372,7 @@ if ($empty) {
 $data = replace_table($sum_table_tag, $data, $sum_session, \@saturday, \@sunday, 1) if ($sum_session);
 $data = replace_table($patch_table_tag, $data, $patch_session, \@saturday, \@sunday, 0) if ($patch_session);
 
-print $data if ($debug);
+print "$data\n" if ($debug);
 exit if ($dry_run);
 
 #
