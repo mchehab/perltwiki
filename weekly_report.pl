@@ -7,6 +7,7 @@ use HTML::Entities;
 use Pod::Usage;
 use Config::IniFiles;
 use POSIX;
+use utf8;
 
 #
 # Don't need to touch on anything below that to customize the script.
@@ -39,6 +40,8 @@ my $sum_session;
 my $patch_session;
 my $summary_footer;
 my $patch_footer;
+my $gbm_patches;
+my %gbm_hash;
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -83,6 +86,9 @@ if ($config_file) {
 
 	$val = $cfg->val('global', 'patch_footer');
 	$patch_footer = $val if ($val);
+
+	$val = $cfg->val('global', 'gbm_patches');
+	$gbm_patches = $val if ($val);
 
 	$val = $cfg->val('global', 'start-date');
 	$start_date = $val if ($val);
@@ -138,6 +144,20 @@ sub epoch_to_text($)
 }
 
 #
+# Get GBM patch list
+#
+sub get_gbm_patches()
+{
+	open IN, $gbm_patches or return;
+	while (<IN>) {
+		if (m/^([0-9a-f]+)/) {
+			$gbm_hash{$1} = 1;
+		}
+	}
+	close IN;
+}
+
+#
 # Get GIT patch statistics and patch table
 #
 
@@ -154,6 +174,7 @@ sub get_patch_table($$$)
 		my $per_author = 0;
 		my $per_committer = 0;
 		my $reviewed = 0;
+		my $gbm = 0;
 
 		my $since = (Date_to_Days(@saturday) - Date_to_Days(1970, 01, 01)) * 60 * 60 * 24;
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
@@ -173,6 +194,9 @@ sub get_patch_table($$$)
 
 					if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
 						$per_author++;
+						if ($gbm_hash{$cs}) {
+							$gbm++;
+						}
 					}
 					if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
 						$per_committer++;
@@ -183,9 +207,9 @@ sub get_patch_table($$$)
 
 			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0 && !$show_prj_empty{$proj});
 
-			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed\n", $per_author, $per_committer, $reviewed if ($debug);
+			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed, %d gbm\n", $per_author, $per_committer, $reviewed, $gbm if ($debug);
 
-			$table .= "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | 0 |\n";
+			$table .= "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | $gbm |\n";
 
 			close IN;
 		} else {
@@ -207,11 +231,19 @@ sub get_patch_table($$$)
 					my $cd_txt = epoch_to_text($cd);
 
 					if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
-						$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
+						if ($gbm_hash{$cs}) {
+							$ad_txt = "<span style=\"background-color: orange;\">$ad_txt</span>";
+						} else {
+							$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
+						}
 					}
 
 					if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
-						$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
+						if ($gbm_hash{$cs}) {
+							$cd_txt = "<span style=\"background-color: orange;\">$cd_txt</span>";
+						} else {
+							$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
+						}
 					}
 
 					$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad_txt, encode_entities($an), $cd_txt, encode_entities($cn), $s;
@@ -346,6 +378,8 @@ $empty = 1 if (!($data =~ m/STARTSECTION/));
 
 my $sum_table_tag = '===SUMMARYTABLE===';
 my $patch_table_tag = '===PATCHTABLE===';
+
+get_gbm_patches();
 
 if ($empty) {
 	$data = sprintf "%TOC%\n\n---+ $period";
