@@ -293,7 +293,7 @@ sub replace_table($$$$$$)
 			$sumtable .= qx(cat $summary_footer);
 			$table = $sumtable;
 		}
-	} else {
+	} elsif ($table ne "") {
 		$table .= qx(cat $patch_footer);
 	}
 
