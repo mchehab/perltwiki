@@ -34,6 +34,7 @@ my @project_name;
 my %projects;
 my %show_prj_empty;
 my %prj_subtree;
+my %gbm_branch;
 my @sessions;
 my @session_body;
 my $sum_session;
@@ -97,12 +98,14 @@ if ($config_file) {
 		my $path = $cfg->val($prj, 'path');
 		my $show_empty = $cfg->val($prj, 'show_empty');
 		my $subtree = $cfg->val($prj, 'subtree');
+		my $gbm = $cfg->val($prj, 'gbm_branch');
 		$prj =~ s/^\S+\s+//;
 		print "config: project $prj, path $path\n" if ($debug);
 		$projects{$prj} = $path;
 		push @project_name, $prj;
 		$show_prj_empty{$prj} = $show_empty if ($show_empty);
 		$prj_subtree{$prj} = $subtree if ($subtree);
+		$gbm_branch{$prj} = $gbm if ($gbm);
 	}
 
 	foreach my $session ($cfg->GroupMembers('session')) {
@@ -161,13 +164,14 @@ sub get_gbm_patches()
 # Get GIT patch statistics and patch table
 #
 
-sub get_patch_summary($$$$$)
+sub get_patch_summary($$$$$$)
 {
 	my $proj = shift;
 	my $dir = shift;
 	my $since = shift;
 	my $to = shift;
 	my $subtree = shift;
+	my $gbm_branch = shift;
 
 	my $subtree = $prj_subtree{$proj} if ($prj_subtree{$proj});
 	my $per_author = 0;
@@ -175,7 +179,7 @@ sub get_patch_summary($$$$$)
 	my $reviewed = 0;
 	my $gbm = 0;
 
-	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $subtree |grep '$name'|";
+	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
 	while (<IN>) {
 		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
 			my $cs = $1;
@@ -187,7 +191,7 @@ sub get_patch_summary($$$$$)
 
 			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
 				$per_author++;
-				if ($gbm_hash{$cs}) {
+				if ($gbm_branch || $gbm_hash{$cs}) {
 					$gbm++;
 				}
 			}
@@ -207,18 +211,19 @@ sub get_patch_summary($$$$$)
 	return "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | $gbm |\n";
 }
 
-sub get_patches($$$$$)
+sub get_patches($$$$$$)
 {
 	my $proj = shift;
 	my $dir = shift;
 	my $since = shift;
 	my $to = shift;
 	my $subtree = shift;
+	my $gbm_branch = shift;
 
 	my $table = "";
 	my $patch = "";
 
-	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $subtree |grep '$name'|";
+	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
 	while (<IN>) {
 		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
 			my $cs = $1;
@@ -235,7 +240,7 @@ sub get_patches($$$$$)
 			my $cd_txt = epoch_to_text($cd);
 
 			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
-				if ($gbm_hash{$cs}) {
+				if ($gbm_branch || $gbm_hash{$cs}) {
 					$ad_txt = "<span style=\"background-color: orange;\">$ad_txt</span>";
 				} else {
 					$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
@@ -243,7 +248,7 @@ sub get_patches($$$$$)
 			}
 
 			if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
-				if ($gbm_hash{$cs}) {
+				if ($gbm_branch || $gbm_hash{$cs}) {
 					$cd_txt = "<span style=\"background-color: orange;\">$cd_txt</span>";
 				} else {
 					$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
@@ -282,11 +287,12 @@ sub get_patch_table($$$)
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
 
 		my $subtree = $prj_subtree{$proj} if ($prj_subtree{$proj});
+		my $gbm_brch = $gbm_branch{$proj} if ($gbm_branch{$proj});
 
 		if ($summary) {
-			$table .= get_patch_summary($proj, $dir, $since, $to, $subtree);
+			$table .= get_patch_summary($proj, $dir, $since, $to, $subtree, $gbm_brch);
 		} else {
-			$table .= get_patches($proj, $dir, $since, $to, $subtree);
+			$table .= get_patches($proj, $dir, $since, $to, $subtree, $gbm_brch);
 		}
 	}
 	return $table;
