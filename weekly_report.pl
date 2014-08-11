@@ -161,6 +161,108 @@ sub get_gbm_patches()
 # Get GIT patch statistics and patch table
 #
 
+sub get_patch_summary($$$$$)
+{
+	my $proj = shift;
+	my $dir = shift;
+	my $since = shift;
+	my $to = shift;
+	my $subtree = shift;
+
+	my $subtree = $prj_subtree{$proj} if ($prj_subtree{$proj});
+	my $per_author = 0;
+	my $per_committer = 0;
+	my $reviewed = 0;
+	my $gbm = 0;
+
+	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $subtree |grep '$name'|";
+	while (<IN>) {
+		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
+			my $cs = $1;
+			my $ad = $2;
+			my $an = $3;
+			my $cd = $4;
+			my $cn = $5;
+			my $check_review;
+
+			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
+				$per_author++;
+				if ($gbm_hash{$cs}) {
+					$gbm++;
+				}
+			}
+			if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
+				$per_committer++;
+				$reviewed++ if (!($an =~ m/($name)/));
+			}
+		}
+	}
+
+	next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0 && !$show_prj_empty{$proj});
+
+	printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed, %d gbm\n", $per_author, $per_committer, $reviewed, $gbm if ($debug);
+
+	close IN;
+
+	return "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | $gbm |\n";
+}
+
+sub get_patches($$$$$)
+{
+	my $proj = shift;
+	my $dir = shift;
+	my $since = shift;
+	my $to = shift;
+	my $subtree = shift;
+
+	my $table = "";
+	my $patch = "";
+
+	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $subtree |grep '$name'|";
+	while (<IN>) {
+		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
+			my $cs = $1;
+			my $ad = $2;
+			my $an = $3;
+			my $cd = $4;
+			my $cn = $5;
+			my $s = $6;
+
+			next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
+
+
+			my $ad_txt = epoch_to_text($ad);
+			my $cd_txt = epoch_to_text($cd);
+
+			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
+				if ($gbm_hash{$cs}) {
+					$ad_txt = "<span style=\"background-color: orange;\">$ad_txt</span>";
+				} else {
+					$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
+				}
+			}
+
+			if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
+				if ($gbm_hash{$cs}) {
+					$cd_txt = "<span style=\"background-color: orange;\">$cd_txt</span>";
+				} else {
+					$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
+				}
+			}
+
+			$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad_txt, encode_entities($an), $cd_txt, encode_entities($cn), $s;
+		}
+	}
+	close IN;
+	if ($patch ne "") {
+		$table .= sprintf "---+++++ $proj Patch Table\n%%TABLE{headerrows=\"1\"}%%\n";
+		$table .= sprintf '| *Changeset* | *Date* | *Author* | *Commit Date* | *Comitter* | *Subject* |';
+		$table .= "\n$patch\n";
+	}
+
+	return $table;
+}
+
 sub get_patch_table($$$)
 {
 	my @saturday = @{$_[0]};
@@ -182,79 +284,9 @@ sub get_patch_table($$$)
 		my $subtree = $prj_subtree{$proj} if ($prj_subtree{$proj});
 
 		if ($summary) {
-			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $subtree |grep '$name'|";
-			while (<IN>) {
-				if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
-					my $cs = $1;
-					my $ad = $2;
-					my $an = $3;
-					my $cd = $4;
-					my $cn = $5;
-					my $check_review;
-
-					if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
-						$per_author++;
-						if ($gbm_hash{$cs}) {
-							$gbm++;
-						}
-					}
-					if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
-						$per_committer++;
-						$reviewed++ if (!($an =~ m/($name)/));
-					}
-				}
-			}
-
-			next if ($reviewed == 0 && $per_author == 0 && $per_committer == 0 && !$show_prj_empty{$proj});
-
-			printf "\tproject $proj, directory $dir: %d authored, %d committed, %d reviewed, %d gbm\n", $per_author, $per_committer, $reviewed, $gbm if ($debug);
-
-			$table .= "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | $gbm |\n";
-
-			close IN;
+			$table .= get_patch_summary($proj, $dir, $since, $to, $subtree);
 		} else {
-			my $patch = "";
-			open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $subtree |grep '$name'|";
-			while (<IN>) {
-				if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
-					my $cs = $1;
-					my $ad = $2;
-					my $an = $3;
-					my $cd = $4;
-					my $cn = $5;
-					my $s = $6;
-
-					next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
-
-
-					my $ad_txt = epoch_to_text($ad);
-					my $cd_txt = epoch_to_text($cd);
-
-					if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
-						if ($gbm_hash{$cs}) {
-							$ad_txt = "<span style=\"background-color: orange;\">$ad_txt</span>";
-						} else {
-							$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
-						}
-					}
-
-					if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
-						if ($gbm_hash{$cs}) {
-							$cd_txt = "<span style=\"background-color: orange;\">$cd_txt</span>";
-						} else {
-							$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
-						}
-					}
-
-					$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad_txt, encode_entities($an), $cd_txt, encode_entities($cn), $s;
-				}
-			}
-			close IN;
-			if ($patch ne "") {
-				$table .= sprintf "---+++++ $proj Patch Table\n%%TABLE{headerrows=\"1\"}%%\n";
-				$table .= sprintf '| *Changeset* | *Date* | *Author* | *Commit Date* | *Comitter* | *Subject* |';
-				$table .= "\n$patch\n";
-			}
+			$table .= get_patches($proj, $dir, $since, $to, $subtree);
 		}
 	}
 	return $table;
