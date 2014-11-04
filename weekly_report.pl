@@ -8,6 +8,7 @@ use Pod::Usage;
 use Config::IniFiles;
 use POSIX;
 use utf8;
+use Data::Dumper;
 
 #
 # Don't need to touch on anything below that to customize the script.
@@ -23,6 +24,7 @@ my $username = "";
 my $password =  "";
 my $domain = "";
 my $team = "";
+my $advanced_auth = 1;
 my $dry_run = 0;
 my $debug = 0;
 my $force_week;
@@ -381,20 +383,39 @@ if ($saturday[0] != $sunday[0]) {
 }
 
 #
-# Generate the week's URL
+# Do authentication
 #
 
-my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d", $domain, $team, $username, $week, $year;
+my $mech = WWW::Mechanize->new();
 
-printf "URL = $url\n" if ($debug);
-printf "period = $period" if ($debug);
+if (!$advanced_auth) {
+	$mech->credentials($username, $password);
+} else {
+	my $url = sprintf "%s/bin/login/OpenSourceGroup/WebHome?origurl=/", $domain, $team, $username, $week, $year;
+	printf "Authenticating with $url\n" if ($debug);
+
+	my $res = $mech->get($url);
+	if (!$res->is_success) {
+		print STDERR $res->status_line, "\n";
+		exit;
+	}
+	print Dumper($mech) if ($debug > 1);
+
+	my $form = $mech->form_number(0);
+
+	$form->param("username", $username);
+	$form->param("password", $password);
+
+
+	$mech->submit();
+}
 
 #
 # Read the Twiki's page
 #
 
-my $mech = WWW::Mechanize->new();
-$mech->credentials($username, $password);
+my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d?nowysiwyg=1", $domain, $team, $username, $week, $year;
+printf "period = $period" if ($debug);
 
 print "Reading $url\n" if (!$debug);
 my $res = $mech->get($url);
