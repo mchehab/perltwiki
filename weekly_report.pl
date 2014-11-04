@@ -215,7 +215,7 @@ sub get_patch_summary($$$$$$)
 	my $fixup = $author_fixup{$proj};
 	my %cs_hash;
 	if ($fixup) {
-		my %cs_hash = %{$fixup};
+		%cs_hash = %{$fixup};
 		foreach my $cs (keys %cs_hash) {
 			my %line = %{$cs_hash{$cs}};
 
@@ -288,7 +288,7 @@ sub get_patches($$$$$$)
 	if ($fixup) {
 		print "$proj has author fixup\n" if ($debug);
 
-		my %cs_hash = %{$fixup};
+		%cs_hash = %{$fixup};
 		foreach my $cs (keys %cs_hash) {
 			my %line = %{$cs_hash{$cs}};
 
