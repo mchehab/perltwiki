@@ -37,6 +37,7 @@ my %projects;
 my %show_prj_empty;
 my %prj_subtree;
 my %gbm_branch;
+my %author_fixup;
 my @sessions;
 my @session_body;
 my $sum_session;
@@ -45,6 +46,32 @@ my $summary_footer;
 my $patch_footer;
 my $gbm_patches;
 my %gbm_hash;
+
+sub get_author_fixup($$)
+{
+	my $prj = shift;
+	my $file = shift;
+
+	my %changeset;
+
+	open IN, $file or die "can't find author fixup on file $file";
+	while (<IN>) {
+		if (m/([^\,]+)\,\s*([^\,]+)\,\s*([^\,]+)\,\s*([^\,]+)\,\s*([^\,]+)\,\s*([^\,\n]+)/) {
+			my $cs = $1;
+			my $author = $2;
+			my $adate = $3;
+			my $committer = $4;
+			my $cdate = $5;
+			my $comment = $6;
+
+			$changeset{$cs} = { 'author' => $author, 'adate' => $adate, 'committer' => $committer, 'cdate' => $cdate, 'comment' =>$comment };
+
+			printf "changeset = %s, author %s - %s, commiter %s - %s, comment: %s\n", $cs, $author, $adate, $committer, $cdate, $comment if ($debug);
+		}
+	}
+	close IN;
+	$author_fixup{$prj} = \%changeset;
+}
 
 #
 # This is to avoid digging too deeper at the tree looking for
@@ -101,6 +128,7 @@ if ($config_file) {
 		my $show_empty = $cfg->val($prj, 'show_empty');
 		my $subtree = $cfg->val($prj, 'subtree');
 		my $gbm = $cfg->val($prj, 'gbm_branch');
+		my $author_fixup = $cfg->val($prj, 'author_fixup');
 		$prj =~ s/^\S+\s+//;
 		print "config: project $prj, path $path\n" if ($debug);
 		$projects{$prj} = $path;
@@ -108,6 +136,9 @@ if ($config_file) {
 		$show_prj_empty{$prj} = $show_empty if ($show_empty);
 		$prj_subtree{$prj} = $subtree if ($subtree);
 		$gbm_branch{$prj} = $gbm if ($gbm);
+
+		# Allow fixup authorship and author's date
+		get_author_fixup($prj, $author_fixup) if ($author_fixup);
 	}
 
 	foreach my $session ($cfg->GroupMembers('session')) {
@@ -181,6 +212,31 @@ sub get_patch_summary($$$$$$)
 	my $reviewed = 0;
 	my $gbm = 0;
 
+	my $fixup = $author_fixup{$proj};
+	my %cs_hash;
+	if ($fixup) {
+		my %cs_hash = %{$fixup};
+		foreach my $cs (keys %cs_hash) {
+			my %line = %{$cs_hash{$cs}};
+
+			my $ad = $line{'adate'};
+			my $an = $line{'author'};
+			my $cd = $line{'cdate'};
+			my $cn = $line{'committer'};
+
+			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
+				$per_author++;
+				if ($gbm_branch || $gbm_hash{$cs}) {
+					$gbm++;
+				}
+			}
+			if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
+				$per_committer++;
+				$reviewed++ if (!($an =~ m/($name)/));
+			}
+		}
+	}
+
 	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
 	while (<IN>) {
 		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
@@ -189,7 +245,9 @@ sub get_patch_summary($$$$$$)
 			my $an = $3;
 			my $cd = $4;
 			my $cn = $5;
-			my $check_review;
+
+			# Discard hashes that belong to fixup table
+			next if ($fixup && $cs_hash{$cs});
 
 			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
 				$per_author++;
@@ -225,6 +283,46 @@ sub get_patches($$$$$$)
 	my $table = "";
 	my $patch = "";
 
+	my $fixup = $author_fixup{$proj};
+	my %cs_hash;
+	if ($fixup) {
+		print "$proj has author fixup\n" if ($debug);
+
+		my %cs_hash = %{$fixup};
+		foreach my $cs (keys %cs_hash) {
+			my %line = %{$cs_hash{$cs}};
+
+			my $ad = $line{'adate'};
+			my $an = $line{'author'};
+			my $cd = $line{'cdate'};
+			my $cn = $line{'committer'};
+			my $s  = $line{'comment'};
+
+			next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
+
+			my $ad_txt = epoch_to_text($ad);
+			my $cd_txt = epoch_to_text($cd);
+
+			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
+				if ($gbm_branch || $gbm_hash{$cs}) {
+					$ad_txt = "<span style=\"background-color: orange;\">$ad_txt</span>";
+				} else {
+					$ad_txt = "<span style=\"background-color: lightgreen;\">$ad_txt</span>";
+				}
+			}
+
+			if ($cd >= $since && $cd <= $to && $cn =~ m/($name)/) {
+				if ($gbm_branch || $gbm_hash{$cs}) {
+					$cd_txt = "<span style=\"background-color: orange;\">$cd_txt</span>";
+				} else {
+					$cd_txt = "<span style=\"background-color: lightgreen;\">$cd_txt</span>";
+				}
+			}
+
+			$patch .= sprintf "| $cs | %s | %s | %s | %s | %s |\n", $ad_txt, encode_entities($an), $cd_txt, encode_entities($cn), $s;
+		}
+	}
+
 	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
 	while (<IN>) {
 		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
@@ -235,8 +333,10 @@ sub get_patches($$$$$$)
 			my $cn = $5;
 			my $s = $6;
 
-			next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
+			# Discard hashes that belong to fixup table
+			next if ($fixup && $cs_hash{$cs});
 
+			next if (!($ad >= $since && $ad <= $to && $an =~ m/($name)/) && !($cd >= $since && $cd <= $to && $cn =~ m/($name)/));
 
 			my $ad_txt = epoch_to_text($ad);
 			my $cd_txt = epoch_to_text($cd);
@@ -385,6 +485,8 @@ if ($saturday[0] != $sunday[0]) {
 #
 # Do authentication
 #
+
+print "Connecting and authenticating\n";
 
 my $mech = WWW::Mechanize->new();
 
