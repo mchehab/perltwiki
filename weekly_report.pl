@@ -516,7 +516,8 @@ if (!$advanced_auth) {
 # Read the Twiki's page
 #
 
-my $url = sprintf "%s/bin/edit/%s/%sWeek%02dStatus%d?nowysiwyg=1", $domain, $team, $username, $week, $year;
+my $status = sprintf "%sWeek%02dStatus%d", $username, $week, $year;
+my $url = sprintf "%s/bin/edit/%s/%s?nowysiwyg=1", $domain, $team, $status;
 printf "period = $period" if ($debug);
 
 print "Reading $url\n" if (!$debug);
@@ -528,6 +529,7 @@ if (!$res->is_success) {
 
 my $form = $mech->form_number(0);
 my $data = $form->param("text");
+my $old_data = $data;
 
 #
 # Detect if the week was not filled yet. In that case, fills it from the
@@ -574,11 +576,43 @@ exit if ($dry_run);
 # Update the Twiki's page
 #
 
-print "Updating $url\n" if (!$debug);
+if ($data eq $old_data) {
+	print "Nothing changed.\n" if (!$debug);
+} else {
+	print "Updating $url\n" if (!$debug);
 
-$form->param("text", $data);
-$form->param("forcenewrevision", 1);
-$mech->submit();
+	$form->param("text", $data);
+	$form->param("forcenewrevision", 1);
+	$mech->submit();
+}
+
+# Update index page
+
+$url = sprintf "%s/bin/edit/%s/%sWeeklyStatusReports%d?nowysiwyg=1", $domain, $team, $username, $year;
+print "Reading $url\n";
+$res = $mech->get($url);
+if (!$res->is_success) {
+	print STDERR $res->status_line, "\n";
+	exit;
+}
+
+$form = $mech->form_number(0);
+$data = $form->param("text");
+
+my $sweek = sprintf "Week %02d", $week;
+my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @saturday, $sweek;
+
+if ($data =~ $sweek) {
+	print "Nothing changed.\n" if (!$debug);
+} else {
+	print "Updating $url\n";
+
+	$data =~ s/(Week\s+Ending[^\n]+\n)/\1$sline/;
+
+	$form->param("text", $data);
+	$form->param("forcenewrevision", 1);
+	$mech->submit();
+}
 
 __END__
 
