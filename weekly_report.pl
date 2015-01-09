@@ -247,7 +247,10 @@ sub get_patch_summary($$$$$$)
 			my $cn = $5;
 
 			# Discard hashes that belong to fixup table
-			next if ($fixup && $cs_hash{$cs});
+			if ($fixup && $cs_hash{$cs}) {
+				print "Discarding $cs from $proj as it is already at fixup table\n" if ($debug);
+				next;
+			};
 
 			if ($ad >= $since && $ad <= $to && $an =~ m/($name)/) {
 				$per_author++;
