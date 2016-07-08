@@ -47,6 +47,12 @@ my $patch_footer;
 my $gbm_patches;
 my %gbm_hash;
 
+# Totals for summary
+my $tot_per_author = 0;
+my $tot_per_committer = 0;
+my $tot_reviewed = 0;
+my $tot_gbm = 0;
+
 sub get_author_fixup($$)
 {
 	my $prj = shift;
@@ -271,6 +277,11 @@ sub get_patch_summary($$$$$$)
 
 	close IN;
 
+	$tot_per_author += $per_author;
+	$tot_per_committer += $per_committer;
+	$tot_reviewed += $reviewed;
+	$tot_gbm += $gbm;
+
 	return "| $proj | " . $per_author . " | " . $per_committer.	" | " .	$reviewed . " | $gbm |\n";
 }
 
@@ -381,12 +392,12 @@ sub get_patch_table($$$)
 
 	my $table = "";
 
+	$tot_per_author = 0;
+	$tot_per_committer = 0;
+	$tot_reviewed = 0;
+	$tot_gbm = 0;
 	foreach my $proj (@project_name) {
 		my $dir = $projects{$proj};
-		my $per_author = 0;
-		my $per_committer = 0;
-		my $reviewed = 0;
-		my $gbm = 0;
 
 		my $since = (Date_to_Days(@saturday) - Date_to_Days(1970, 01, 01)) * 60 * 60 * 24;
 		my $to = (Date_to_Days(@sunday) - Date_to_Days(1970, 01, 01) + 1) * 60 * 60 * 24 - 1;
@@ -396,10 +407,17 @@ sub get_patch_table($$$)
 
 		if ($summary) {
 			$table .= get_patch_summary($proj, $dir, $since, $to, $subtree, $gbm_brch);
+
+
 		} else {
 			$table .= get_patches($proj, $dir, $since, $to, $subtree, $gbm_brch);
 		}
 	}
+
+	if ($summary) {
+		$table .= "| *Total* | " . $tot_per_author . " | " . $tot_per_committer. " | " . $tot_reviewed . " | " . $tot_gbm . " |\n";
+	}
+
 	return $table;
 }
 
