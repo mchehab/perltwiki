@@ -621,7 +621,7 @@ $form = $mech->form_number(0);
 $data = $form->param("text");
 
 my $sweek = sprintf "Week %02d", $week;
-my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @saturday, $sweek;
+my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @sunday, $sweek;
 
 if ($data =~ $sweek) {
 	print "Nothing changed.\n" if (!$debug);
