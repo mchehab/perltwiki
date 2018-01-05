@@ -579,7 +579,7 @@ if ($empty) {
 		printf "section $s ($i): %s\n", $section_body[$i] if ($debug);
 
 		$data .= sprintf "\n---++ $n\n\n%%STARTSECTION{\"$s\"}%%\n";
-		$data .= qx(cat $section_body[$i]);
+		$data .= qx(cat $section_body[$i]) if ($section_body[$i]);
 		$data .= $sum_table_tag if ($s eq $sum_section);
 		$data .= $patch_table_tag if ($s eq $patch_section);
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
