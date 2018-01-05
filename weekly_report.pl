@@ -39,6 +39,7 @@ my %prj_subtree;
 my %gbm_branch;
 my %author_fixup;
 my @sections;
+my %section_name;
 my @section_body;
 my $sum_section;
 my $patch_section;
@@ -151,7 +152,11 @@ if ($config_file) {
 		my $has_summary = $cfg->val($section, 'summary');
 		my $has_patch = $cfg->val($section, 'patches');
 		my $template = $cfg->val($section, 'template');
+		my $name = $cfg->val($section, 'name');
 		$section =~ s/^\S+\s+//;
+		$name = $section if (!$name);
+		$section_name{$section} = $name;
+
 		printf "config: section $section, template $template%s%s\n",
 			$has_summary ? ", has patch summary" : "",
 			$has_patch ? ", has patch table" : "" if ($debug);
@@ -570,9 +575,10 @@ if ($empty) {
 
 	for (my $i = 0; $i < scalar @sections; $i++) {
 		my $s = $sections[$i];
+		my $n = $section_name{$s};
 		printf "section $s ($i): %s\n", $section_body[$i] if ($debug);
 
-		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
+		$data .= sprintf "\n---++ $n\n\n%%STARTSECTION{\"$s\"}%%\n";
 		$data .= qx(cat $section_body[$i]);
 		$data .= $sum_table_tag if ($s eq $sum_section);
 		$data .= $patch_table_tag if ($s eq $patch_section);
