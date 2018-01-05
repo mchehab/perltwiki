@@ -38,10 +38,10 @@ my %show_prj_empty;
 my %prj_subtree;
 my %gbm_branch;
 my %author_fixup;
-my @sessions;
-my @session_body;
-my $sum_session;
-my $patch_session;
+my @sections;
+my @section_body;
+my $sum_section;
+my $patch_section;
 my $summary_footer;
 my $patch_footer;
 my $gbm_patches;
@@ -147,19 +147,19 @@ if ($config_file) {
 		get_author_fixup($prj, $author_fixup) if ($author_fixup);
 	}
 
-	foreach my $session ($cfg->GroupMembers('session')) {
-		my $has_summary = $cfg->val($session, 'summary');
-		my $has_patch = $cfg->val($session, 'patches');
-		my $template = $cfg->val($session, 'template');
-		$session =~ s/^\S+\s+//;
-		printf "config: session $session, template $template%s%s\n",
+	foreach my $section ($cfg->GroupMembers('section')) {
+		my $has_summary = $cfg->val($section, 'summary');
+		my $has_patch = $cfg->val($section, 'patches');
+		my $template = $cfg->val($section, 'template');
+		$section =~ s/^\S+\s+//;
+		printf "config: section $section, template $template%s%s\n",
 			$has_summary ? ", has patch summary" : "",
 			$has_patch ? ", has patch table" : "" if ($debug);
-		push @sessions, $session;
-		push @session_body, $template;
+		push @sections, $section;
+		push @section_body, $template;
 
-		$sum_session = $session if $has_summary;
-		$patch_session = $session if $has_patch;
+		$sum_section = $section if $has_summary;
+		$patch_section = $section if $has_patch;
 	}
 }
 
@@ -168,8 +168,8 @@ if ($config_file eq "" || $name eq "" || $username eq "" || $password eq  "" || 
 	pod2usage(1);
 }
 
-if (!(scalar @sessions)) {
-	printf STDERR "ERROR: at least one session should be defined at the config file\n\n";
+if (!(scalar @sections)) {
+	printf STDERR "ERROR: at least one section should be defined at the config file\n\n";
 	pod2usage(1);
 }
 
@@ -429,19 +429,19 @@ sub replace_table($$$$$$)
 {
 	my $table_tag = shift;
 	my $data = shift;
-	my $session = shift;
+	my $section = shift;
 	my $date1 = shift;
 	my $date2 = shift;
 	my $summary = shift;
 
-	print "replace table $session\n" if ($debug);
+	print "replace table $section\n" if ($debug);
 
-	# If the session has tables remove
-	$data =~ s/(STARTSECTION\{\")($session)(\"\}.*?)\-\-\-\+\+*\s+.*?(\%ENDSECTION\{\")($session)/\1\2\3$table_tag\4\5/s;
+	# If the section has tables remove
+	$data =~ s/(STARTSECTION\{\")($section)(\"\}.*?)\-\-\-\+\+*\s+.*?(\%ENDSECTION\{\")($section)/\1\2\3$table_tag\4\5/s;
 
-	# If the session doesn't have a session tag, add it
+	# If the section doesn't have a section tag, add it
 	if (!($data =~ m/$table_tag/)) {
-		$data =~ s/(\%ENDSECTION\{\")($session)(\"\}.)/$table_tag\1\2\3/s;
+		$data =~ s/(\%ENDSECTION\{\")($section)(\"\}.)/$table_tag\1\2\3/s;
 	}
 
 	my $table = get_patch_table($date1, $date2, $summary);
@@ -568,14 +568,14 @@ get_gbm_patches();
 if ($empty) {
 	$data = sprintf "%TOC%\n\n---+ $period";
 
-	for (my $i = 0; $i < scalar @sessions; $i++) {
-		my $s = $sessions[$i];
-		printf "session $s ($i): %s\n", $session_body[$i] if ($debug);
+	for (my $i = 0; $i < scalar @sections; $i++) {
+		my $s = $sections[$i];
+		printf "section $s ($i): %s\n", $section_body[$i] if ($debug);
 
 		$data .= sprintf "\n---++ $s\n\n%%STARTSECTION{\"$s\"}%%\n";
-		$data .= qx(cat $session_body[$i]);
-		$data .= $sum_table_tag if ($s eq $sum_session);
-		$data .= $patch_table_tag if ($s eq $patch_session);
+		$data .= qx(cat $section_body[$i]);
+		$data .= $sum_table_tag if ($s eq $sum_section);
+		$data .= $patch_table_tag if ($s eq $patch_section);
 		$data .= sprintf "%%ENDSECTION{\"$s\"}%%\n";
 	}
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", Today();
@@ -587,8 +587,8 @@ if ($empty) {
 # Replace the summary and patch table, using GIT data
 #
 
-$data = replace_table($sum_table_tag, $data, $sum_session, \@saturday, \@sunday, 1) if ($sum_session);
-$data = replace_table($patch_table_tag, $data, $patch_session, \@saturday, \@sunday, 0) if ($patch_session);
+$data = replace_table($sum_table_tag, $data, $sum_section, \@saturday, \@sunday, 1) if ($sum_section);
+$data = replace_table($patch_table_tag, $data, $patch_section, \@saturday, \@sunday, 0) if ($patch_section);
 
 print "$data\n" if ($debug);
 exit if ($dry_run);
@@ -676,18 +676,18 @@ Read the configuration from the file. The configuration file is on .ini format, 
 
 	path = /devel/foo
 
-[session Summary]
+[section Summary]
 
 	template = summary.twiki
 	summary = 1
 
-[session Development]
+[section Development]
 
 	template = development.twiki
 	patches = 1
 
 The configuration file should always passed as a parameter, and should contain at least
-one session, otherwise the script won't work.
+one section, otherwise the script won't work.
 
 =item B<--name NAME>
 
@@ -755,10 +755,10 @@ activities done along the week, and generating patch statistics, and patch table
 Both patch statistics and patch tables require git repositories, although it should not be
 hard to change the logic to also accept other types of SCM.
 
-It should be noticed that the git repository locations and the report sessions are
+It should be noticed that the git repository locations and the report sections are
 currently described on some tables inside the source code.
 
-For the sessions, the script will automatically fill an empty week with the contents of the
+For the sections, the script will automatically fill an empty week with the contents of the
 *.twiki data.
 
 =head1 BUGS
