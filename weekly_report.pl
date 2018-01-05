@@ -243,7 +243,7 @@ sub get_patch_summary($$$$$$)
 		}
 	}
 
-	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
+	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%aN|%cd|%cN' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
 	while (<IN>) {
 		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+?)\s*$/) {
 			my $cs = $1;
@@ -337,7 +337,7 @@ sub get_patches($$$$$$)
 		}
 	}
 
-	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%an|%cd|%cn|%s' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
+	open IN, "cd $dir && git log --date=raw --format='%h|%ad|%aN|%cd|%cN|%s' --date-order --since '$start_date' $gbm_branch $subtree |grep '$name'|";
 	while (<IN>) {
 		if (m/([^\|]+)\|([^\|\s]+)\s+[^\|]+\|([^\|]+)\|([^\|]+)\s+[^\|]+\|([^\|]+)\|([^\|]+?)\s*$/) {
 			my $cs = $1;
@@ -507,7 +507,7 @@ if ($saturday[0] != $sunday[0]) {
 # Do authentication
 #
 
-print "Connecting and authenticating\n";
+print "Connecting and authenticating\n" if ($debug);
 
 my $mech = WWW::Mechanize->new();
 
@@ -541,7 +541,7 @@ my $status = sprintf "%sWeek%02dStatus%d", $username, $week, $year;
 my $url = sprintf "%s/bin/edit/%s/%s?nowysiwyg=1", $domain, $team, $status;
 printf "period = $period" if ($debug);
 
-print "Reading $url\n" if (!$debug);
+print "Reading $url\n" if ($debug);
 my $res = $mech->get($url);
 if (!$res->is_success) {
 	print STDERR $res->status_line, "\n";
@@ -598,7 +598,7 @@ exit if ($dry_run);
 #
 
 if ($data eq $old_data) {
-	print "Nothing changed.\n" if (!$debug);
+	print "Nothing changed on week $week.\n";
 } else {
 	print "Updating $url\n" if (!$debug);
 
@@ -610,7 +610,7 @@ if ($data eq $old_data) {
 # Update index page
 
 $url = sprintf "%s/bin/edit/%s/%sWeeklyStatusReports%d?nowysiwyg=1", $domain, $team, $username, $year;
-print "Reading $url\n";
+print "Reading $url\n" if ($debug);
 $res = $mech->get($url);
 if (!$res->is_success) {
 	print STDERR $res->status_line, "\n";
@@ -624,7 +624,7 @@ my $sweek = sprintf "Week %02d", $week;
 my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @sunday, $sweek;
 
 if ($data =~ $sweek) {
-	print "Nothing changed.\n" if (!$debug);
+	print "Nothing changed.\n" if ($debug);
 } else {
 	print "Updating $url\n";
 
