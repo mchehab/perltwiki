@@ -23,6 +23,7 @@ my $name = "";
 my $username = "";
 my $password =  "";
 my $domain = "";
+my $local_storage = "";
 my $team = "";
 my $advanced_auth = 1;
 my $dry_run = 0;
@@ -115,6 +116,9 @@ if ($config_file) {
 	$val = $cfg->val('global', 'domain');
 	$domain = $val if ($val);
 
+	$val = $cfg->val('global', 'local_storage');
+	$local_storage = $val if ($val);
+
 	$val = $cfg->val('global', 'team');
 	$team = $val if ($val);
 
@@ -168,9 +172,14 @@ if ($config_file) {
 	}
 }
 
-if ($config_file eq "" || $name eq "" || $username eq "" || $password eq  "" || $domain eq "" || $team eq "") {
+if ($config_file eq "" || $name eq "" || $username eq "" || $team eq "") {
 	printf STDERR "ERROR: mandatory parameters not specified\n\n";
 	pod2usage(1);
+}
+
+if (($password eq  "" && $domain eq "") && $local_storage eq "") {
+	printf STDERR "ERROR: either password/domain or local_storage is required\n\n";
+	exit -1;
 }
 
 if (!(scalar @sections)) {
@@ -411,10 +420,10 @@ sub get_patch_table($$$)
 		my $gbm_brch = $gbm_branch{$proj} if ($gbm_branch{$proj});
 
 		if ($summary) {
+			printf("Getting patch summary for $proj\n") if ($debug);
 			$table .= get_patch_summary($proj, $dir, $since, $to, $subtree, $gbm_brch);
-
-
 		} else {
+			printf("Getting patches for $proj\n") if ($debug);
 			$table .= get_patches($proj, $dir, $since, $to, $subtree, $gbm_brch);
 		}
 	}
@@ -512,49 +521,60 @@ if ($saturday[0] != $sunday[0]) {
 # Do authentication
 #
 
-print "Connecting and authenticating\n" if ($debug);
+my $status = sprintf "%sWeek%02dStatus%d", $username, $week, $year;
+my $url = sprintf "%s/bin/edit/%s/%s?nowysiwyg=1", $domain, $team, $status;
+printf "period = $period" if ($debug);
 
-my $mech = WWW::Mechanize->new();
+my $data;
+my ($mech, $url, $form, $res);
 
-if (!$advanced_auth) {
-	$mech->credentials($username, $password);
+if ($local_storage) {
+	print "Opening $local_storage/$status\n" if ($debug);
+	open IN, "<$local_storage/$status";
+	$data .=  $_ while (<IN>);
+	close IN;
 } else {
-	my $url = sprintf "%s/bin/login/OpenSourceGroup/WebHome?origurl=/", $domain, $team, $username, $week, $year;
-	printf "Authenticating with $url\n" if ($debug);
+	print "Connecting and authenticating\n" if ($debug);
 
+	$mech = WWW::Mechanize->new();
+
+	if (!$advanced_auth) {
+		$mech->credentials($username, $password);
+	} else {
+		$url = sprintf "%s/bin/login/OpenSourceGroup/WebHome?origurl=/", $domain, $team, $username, $week, $year;
+
+		printf "Authenticating with $url\n" if ($debug);
+
+		my $res = $mech->get($url);
+		if (!$res->is_success) {
+			print STDERR $res->status_line, "\n";
+			exit;
+		}
+		print Dumper($mech) if ($debug > 1);
+	}
+
+	$form = $mech->form_number(0);
+
+	$form->param("username", $username);
+	$form->param("password", $password);
+
+	$mech->submit();
+
+	#
+	# Read the Twiki's page
+	#
+
+	print "Reading $url\n" if ($debug);
 	my $res = $mech->get($url);
 	if (!$res->is_success) {
 		print STDERR $res->status_line, "\n";
 		exit;
 	}
-	print Dumper($mech) if ($debug > 1);
 
 	my $form = $mech->form_number(0);
-
-	$form->param("username", $username);
-	$form->param("password", $password);
-
-
-	$mech->submit();
+	$data = $form->param("text");
 }
 
-#
-# Read the Twiki's page
-#
-
-my $status = sprintf "%sWeek%02dStatus%d", $username, $week, $year;
-my $url = sprintf "%s/bin/edit/%s/%s?nowysiwyg=1", $domain, $team, $status;
-printf "period = $period" if ($debug);
-
-print "Reading $url\n" if ($debug);
-my $res = $mech->get($url);
-if (!$res->is_success) {
-	print STDERR $res->status_line, "\n";
-	exit;
-}
-
-my $form = $mech->form_number(0);
-my $data = $form->param("text");
 my $old_data = $data;
 
 #
@@ -571,6 +591,7 @@ my $patch_table_tag = '===PATCHTABLE===';
 get_gbm_patches();
 
 if ($empty) {
+	print "Empty file. Generating from scratch\n" if ($debug);
 	$data = sprintf "%TOC%\n\n---+ $period";
 
 	for (my $i = 0; $i < scalar @sections; $i++) {
@@ -587,16 +608,18 @@ if ($empty) {
 	$data .= sprintf "\n\n-- Main.$username - %04d-%02d-%02d\n", Today();
 
 	print $data if ($debug > 1);
+	print "Template generated\n" if ($debug && $debug < 2);
 }
 
 #
 # Replace the summary and patch table, using GIT data
 #
 
+print "Replacing patch tables\n" if ($debug);
 $data = replace_table($sum_table_tag, $data, $sum_section, \@saturday, \@sunday, 1) if ($sum_section);
 $data = replace_table($patch_table_tag, $data, $patch_section, \@saturday, \@sunday, 0) if ($patch_section);
 
-print "$data\n" if ($debug);
+print "Data $data\n" if ($debug);
 exit if ($dry_run);
 
 #
@@ -606,39 +629,50 @@ exit if ($dry_run);
 if ($data eq $old_data) {
 	print "Nothing changed on week $week.\n";
 } else {
-	print "Updating $url\n" if (!$debug);
 
-	$form->param("text", $data);
-	$form->param("forcenewrevision", 1);
-	$mech->submit();
+	if ($local_storage) {
+		print "Updating $data\n" if (!$debug);
+
+		open OUT, ">$local_storage/$status";
+		print OUT $data;
+		close $data;
+	} else {
+		print "Updating $url\n" if (!$debug);
+
+		$form->param("text", $data);
+		$form->param("forcenewrevision", 1);
+		$mech->submit();
+	}
 }
 
 # Update index page
 
-$url = sprintf "%s/bin/edit/%s/%sWeeklyStatusReports%d?nowysiwyg=1", $domain, $team, $username, $year;
-print "Reading $url\n" if ($debug);
-$res = $mech->get($url);
-if (!$res->is_success) {
-	print STDERR $res->status_line, "\n";
-	exit;
-}
+if (!$local_storage) {
+	$url = sprintf "%s/bin/edit/%s/%sWeeklyStatusReports%d?nowysiwyg=1", $domain, $team, $username, $year;
+	print "Reading $url\n" if ($debug);
+	$res = $mech->get($url);
+	if (!$res->is_success) {
+		print STDERR $res->status_line, "\n";
+		exit;
+	}
 
-$form = $mech->form_number(0);
-$data = $form->param("text");
+	$form = $mech->form_number(0);
+	$data = $form->param("text");
 
-my $sweek = sprintf "Week %02d", $week;
-my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @sunday, $sweek;
+	my $sweek = sprintf "Week %02d", $week;
+	my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @sunday, $sweek;
 
-if ($data =~ $sweek) {
-	print "Nothing changed.\n" if ($debug);
-} else {
-	print "Updating $url\n";
+	if ($data =~ $sweek) {
+		print "Nothing changed.\n" if ($debug);
+	} else {
+		print "Updating $url\n";
 
-	$data =~ s/(Week\s+Ending[^\n]+\n)/\1$sline/;
+		$data =~ s/(Week\s+Ending[^\n]+\n)/\1$sline/;
 
-	$form->param("text", $data);
-	$form->param("forcenewrevision", 1);
-	$mech->submit();
+		$form->param("text", $data);
+		$form->param("forcenewrevision", 1);
+		$mech->submit();
+	}
 }
 
 __END__
