@@ -93,13 +93,16 @@ GetOptions(
 	"year=s" => \$force_year,
 	"start-date=s" => \$start_date,
 	"dry-run" => \$dry_run,
-	"debug" => \$debug,
+	"debug=i" => \$debug,
+	"d+" => \$debug,
 	'help|?' => \$help,
 	man => \$man
 ) or pod2usage(2);
 
 pod2usage(1) if $help;
 pod2usage(-exitstatus => 0, -verbose => 2) if $man;
+
+print "debug level: $debug\n" if ($debug);
 
 if ($config_file) {
 	my $cfg = Config::IniFiles->new(-file => $config_file);
@@ -522,7 +525,6 @@ if ($saturday[0] != $sunday[0]) {
 #
 
 my $status = sprintf "%sWeek%02dStatus%d", $username, $week, $year;
-my $url = sprintf "%s/bin/edit/%s/%s?nowysiwyg=1", $domain, $team, $status;
 printf "period = $period" if ($debug);
 
 my $data;
@@ -550,7 +552,7 @@ if ($local_storage) {
 			print STDERR $res->status_line, "\n";
 			exit;
 		}
-		print Dumper($mech) if ($debug > 1);
+		print Dumper($mech) if ($debug > 2);
 	}
 
 	$form = $mech->form_number(0);
@@ -564,6 +566,8 @@ if ($local_storage) {
 	# Read the Twiki's page
 	#
 
+	$url = sprintf "%s/bin/edit/%s/%s?nowysiwyg=1", $domain, $team, $status;
+
 	print "Reading $url\n" if ($debug);
 	my $res = $mech->get($url);
 	if (!$res->is_success) {
@@ -571,7 +575,9 @@ if ($local_storage) {
 		exit;
 	}
 
-	my $form = $mech->form_number(0);
+	$form = $mech->form_number(0);
+	print "FORM=" if ($debug > 1);
+	print Dumper($form) if ($debug > 1);
 	$data = $form->param("text");
 }
 
