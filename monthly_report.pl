@@ -14,7 +14,7 @@ my $team;
 my $username;
 
 my $config_file;
-my ($year,$month) = Today();
+my ($year, $month) = Today();
 
 GetOptions(
         "cfg|config=s" => \$config_file,
@@ -48,6 +48,21 @@ sub get_week_range($$)
 	my $week2 = Week_of_Year($year, $month, $day);
 	my $end = Month_to_Text($month) . ", $day $year";
 
+	($year, $month, $day) = Today();
+	my $today_week = Week_of_Year($year, $month, $day);
+
+	if ($today_week < $week2) {
+		$week1 -= $week2 - $today_week;
+		$week2 = $today_week;
+		print STDERR "WARNING: using an ~30 days period, as month didn't finish yet\n";
+
+		($year, $month, $day) = Add_Delta_Days(Monday_of_Week($week1, $year), -1);
+		$start = Month_to_Text($month) . ", $day $year";
+
+		($year, $month, $day) = Today();
+		$end = Month_to_Text($month) . ", $day $year";
+	}
+
 	return ($week1, $week2, $start, $end);
 }
 
@@ -75,15 +90,16 @@ sub parse_week($$)
 			next;
 		}
 
-		if (m/^\-..\+.\s+(Summary|Meetings|Issues|Development)/) {
+		if (m/^\-..\+.\s+(Summary|Meetings|Issues|List of patches)/) {
 			$mode = $1;
+			$week_contents{$week}{$mode} .= "\n" if (m/List of patches/);
 			next;
 		}
 		if (m/^-..\+...*\s+(Patch Summary)/) {
 			$mode = $1;
 			next;
 		}
-		if (m/^-..\+...\+*\s+(.*\s+Table)/) {
+		if (m/^-..\++\s+(.* Patch Table)/) {
 			$mode = $1;
 			next;
 		}
@@ -197,10 +213,12 @@ for (my $week = $week1; $week <= $week2; $week++) {
 		output_table($week_contents{$week}{"Patch Summary"});
 	}
 }
+my $has_meetings;
 
-print "\n<h2>Meetings<\h2>\n";
 for (my $week = $week1; $week <= $week2; $week++) {
 	if ($week_contents{$week}{"Meetings"}) {
+		print "\n<h2>Meetings<\h2>\n" if (!$has_meetings);
+		$has_meetings = 1;
 		printf "\n<h3>Week %s<\h3>\n\n",$week_title{$week};
 		output_lines($week_contents{$week}{"Meetings"});
 	}
@@ -210,6 +228,8 @@ my $has_issues;
 
 for (my $week = $week1; $week <= $week2; $week++) {
 	if ($week_contents{$week}{"Issues"}) {
+		next if ($week_contents{$week}{"Issues"} =~ /\*None\*/);
+
 		print "\n<h2>Issues<\h2>\n" if (!$has_issues);
 		$has_issues = 1;
 
@@ -218,14 +238,12 @@ for (my $week = $week1; $week <= $week2; $week++) {
 	}
 }
 
-print "\n<h2>Development<\h2>\n";
+print "\n<h2>List of patches<\h2>\n";
 for (my $week = $week1; $week <= $week2; $week++) {
-	if ($week_contents{$week}{"Development"}) {
+	if ($week_contents{$week}{"List of patches"}) {
 		printf "\n<h3>Week %s<\h3>\n\n",$week_title{$week};
-		output_lines($week_contents{$week}{"Development"});
-
 		for my $table (keys %{$week_contents{$week}}) {
-			next if ($table =~ m/(Summary|Patch Summary|Meetings|Issues|Development)/);
+			next if ($table =~ m/(Summary|Patch Summary|Meetings|Issues|List of patches)/);
 
 			printf "\n<h4>$table<\h4>\n\n";
 			output_table($week_contents{$week}{$table});
