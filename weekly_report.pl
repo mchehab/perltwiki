@@ -669,7 +669,7 @@ if (!$local_storage) {
 	my $sline = sprintf "| [[%s][%d-%02d-%02d (%s)]] |\n", $status, @sunday, $sweek;
 
 	if ($data =~ $sweek) {
-		print "Nothing changed.\n" if ($debug);
+		print "Nothing changed on week %02d for weekly status reports.\n", $week if ($debug);
 	} else {
 		print "Updating $url\n";
 
